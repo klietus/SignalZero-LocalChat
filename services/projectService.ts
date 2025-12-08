@@ -2,6 +2,14 @@ import { ProjectMeta, ProjectImportStats } from '../types';
 import { apiFetch } from './api';
 
 export const projectService = {
+    async getActive(): Promise<ProjectMeta | null> {
+        const res = await apiFetch('/project/active', { method: 'GET' });
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        return data?.meta ?? null;
+    },
+
     async export(meta: ProjectMeta, systemPrompt: string): Promise<Blob> {
         // Note: systemPrompt is now managed on the server, meta is just passed for file generation info
         const res = await apiFetch('/project/export', {
