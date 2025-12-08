@@ -24,6 +24,7 @@ import { domainService } from './services/domainService';
 import { projectService } from './services/projectService';
 import { testService } from './services/testService';
 import { isApiUrlConfigured, validateApiConnection } from './services/config';
+import { traceService } from './services/traceService';
 
 import { ACTIVATION_PROMPT } from './symbolic_system/activation_prompt';
 
@@ -253,6 +254,37 @@ function App() {
         }
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (!isTracePanelOpen || !isServerConnected) return;
+
+    let isCancelled = false;
+
+    const fetchTraces = async () => {
+        try {
+            const serverTraces = await traceService.list();
+            if (isCancelled) return;
+
+            setTraceLog(prev => {
+                const merged = new Map(serverTraces.map(t => [t.id, t]));
+                prev.forEach(t => { if (!merged.has(t.id)) merged.set(t.id, t); });
+                return Array.from(merged.values());
+            });
+
+            if (!selectedTraceId && serverTraces.length > 0) {
+                setSelectedTraceId(serverTraces[serverTraces.length - 1].id);
+            }
+        } catch (e) {
+            console.error('[TracePanel] Failed to fetch traces from API', e);
+        }
+    };
+
+    fetchTraces();
+
+    return () => {
+        isCancelled = true;
+    };
+  }, [isTracePanelOpen, isServerConnected, selectedTraceId]);
 
   useEffect(() => {
     if (currentView === 'chat') {

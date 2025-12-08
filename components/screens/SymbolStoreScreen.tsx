@@ -161,6 +161,9 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
                                     <div className="min-w-0"><h3 className="font-bold font-mono text-gray-900 dark:text-gray-100 truncate max-w-[150px]">{item.name}</h3><div className="text-[10px] text-gray-400 font-mono mt-0.5 truncate max-w-[150px]">{item.id}</div></div>
                                     <div className="flex items-center gap-1 shrink-0"><button onClick={() => handleToggle(item.id, item.enabled)} className={`transition-colors p-1 ${item.enabled ? 'text-emerald-500 hover:text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>{item.enabled ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}</button></div>
                                 </div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed min-h-[48px] max-h-[48px] overflow-hidden">
+                                    {item.description || 'No description provided.'}
+                                </div>
                                 <div className="flex items-center gap-4 text-xs font-mono text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-3">
                                     <div><span className="block text-[10px] text-gray-400 uppercase">Symbols</span><span className="font-bold text-lg">{item.count}</span></div>
                                 </div>
