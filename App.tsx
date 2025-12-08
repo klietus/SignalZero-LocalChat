@@ -19,7 +19,7 @@ import { ContextScreen } from './components/screens/ContextScreen';
 import { HelpScreen } from './components/screens/HelpScreen';
 import { ServerConnectScreen } from './components/screens/ServerConnectScreen';
 
-import { sendMessage, resetChatSession, setSystemPrompt, runSignalZeroTest } from './services/gemini';
+import { sendMessage, resetChatSession, setSystemPrompt, runSignalZeroTest, getSystemPrompt } from './services/gemini';
 import { domainService } from './services/domainService';
 import { projectService } from './services/projectService';
 import { testService } from './services/testService';
@@ -221,6 +221,39 @@ function App() {
           });
       }
   }, []);
+
+  useEffect(() => {
+      if (!isServerConnected) return;
+
+      let isCancelled = false;
+
+      const hydrateFromServer = async () => {
+          try {
+              const [activeMeta, prompt] = await Promise.all([
+                  projectService.getActive(),
+                  getSystemPrompt()
+              ]);
+
+              if (isCancelled) return;
+
+              if (prompt) {
+                  setActiveSystemPrompt(prompt);
+                  localStorage.setItem('signalzero_active_prompt', prompt);
+              }
+
+              if (activeMeta) {
+                  setProjectMeta(activeMeta);
+                  setCurrentView(prev => prev === 'context' ? 'project' : prev);
+              }
+          } catch (e) {
+              console.error('[Server] Failed to hydrate project context', e);
+          }
+      };
+
+      hydrateFromServer();
+
+      return () => { isCancelled = true; };
+  }, [isServerConnected]);
 
   useEffect(() => {
       const stored = localStorage.getItem('signalzero_user');

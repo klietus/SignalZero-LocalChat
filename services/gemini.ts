@@ -7,6 +7,15 @@ export const resetChatSession = async () => {
     await apiFetch('/chat/reset', { method: 'POST' });
 };
 
+export const getSystemPrompt = async (): Promise<string | null> => {
+    const res = await apiFetch('/system/prompt', { method: 'GET' });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    return data?.prompt ?? null;
+};
+
 export const setSystemPrompt = async (prompt: string) => {
     await apiFetch('/system/prompt', {
         method: 'POST',
