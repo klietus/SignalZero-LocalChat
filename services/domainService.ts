@@ -1,85 +1,70 @@
-
 import { SymbolDef } from '../types';
-import { getApiUrl } from './config';
-
-const getHeaders = () => {
-    const key = localStorage.getItem('signalzero_api_key') || '';
-    return {
-        'Content-Type': 'application/json',
-        'x-api-key': key
-    };
-};
+import { apiFetch } from './api';
 
 export const domainService = {
   
   async listDomains(): Promise<string[]> {
-    const res = await fetch(`${getApiUrl()}/domains`, { headers: getHeaders() });
+    const res = await apiFetch('/domains');
     if (!res.ok) return [];
     const domains = await res.json();
     return domains.map((d: any) => d.id);
   },
 
   async hasDomain(domainId: string): Promise<boolean> {
-    const res = await fetch(`${getApiUrl()}/domains/${domainId}/exists`, { headers: getHeaders() });
+    const res = await apiFetch(`/domains/${domainId}/exists`);
     if (!res.ok) return false;
     const data = await res.json();
     return data.exists;
   },
 
   async isEnabled(domainId: string): Promise<boolean> {
-    const res = await fetch(`${getApiUrl()}/domains/${domainId}/enabled`, { headers: getHeaders() });
+    const res = await apiFetch(`/domains/${domainId}/enabled`);
     if (!res.ok) return false;
     const data = await res.json();
     return data.enabled;
   },
 
   async toggleDomain(domainId: string, enabled: boolean): Promise<void> {
-    await fetch(`${getApiUrl()}/domains/${domainId}/toggle`, {
+    await apiFetch(`/domains/${domainId}/toggle`, {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({ enabled })
     });
   },
 
   async updateDomainMetadata(domainId: string, metadata: { name?: string, description?: string, invariants?: string[] }): Promise<void> {
-    await fetch(`${getApiUrl()}/domains/${domainId}`, {
+    await apiFetch(`/domains/${domainId}`, {
         method: 'PATCH',
-        headers: getHeaders(),
         body: JSON.stringify(metadata)
     });
   },
 
   async deleteDomain(domainId: string): Promise<void> {
-    await fetch(`${getApiUrl()}/domains/${domainId}`, {
-        method: 'DELETE',
-        headers: getHeaders()
+    await apiFetch(`/domains/${domainId}`, {
+        method: 'DELETE'
     });
   },
 
   async clearAll(): Promise<void> {
-    await fetch(`${getApiUrl()}/admin/clear-all`, {
-        method: 'POST',
-        headers: getHeaders()
+    await apiFetch('/admin/clear-all', {
+        method: 'POST'
     });
   },
 
   async deleteSymbol(domainId: string, symbolId: string, cascade: boolean = true): Promise<void> {
-    await fetch(`${getApiUrl()}/domains/${domainId}/symbols/${symbolId}?cascade=${cascade}`, {
-        method: 'DELETE',
-        headers: getHeaders()
+    await apiFetch(`/domains/${domainId}/symbols/${symbolId}?cascade=${cascade}`, {
+        method: 'DELETE'
     });
   },
 
   async propagateRename(domainId: string, oldId: string, newId: string): Promise<void> {
-     await fetch(`${getApiUrl()}/domains/${domainId}/symbols/rename`, {
+     await apiFetch(`/domains/${domainId}/symbols/rename`, {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({ oldId, newId })
     });
   },
 
   async getSymbols(domainId: string): Promise<SymbolDef[]> {
-    const res = await fetch(`${getApiUrl()}/domains/${domainId}/symbols`, { headers: getHeaders() });
+    const res = await apiFetch(`/domains/${domainId}/symbols`);
     if (!res.ok) return [];
     return await res.json();
   },
@@ -87,26 +72,23 @@ export const domainService = {
   async upsertSymbol(domainId: string, symbol: SymbolDef): Promise<void> {
     // Ensure domain ID is set on symbol
     symbol.symbol_domain = domainId;
-    await fetch(`${getApiUrl()}/domains/${domainId}/symbols`, {
+    await apiFetch(`/domains/${domainId}/symbols`, {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify(symbol)
     });
   },
 
   async bulkUpsert(domainId: string, symbols: SymbolDef[]): Promise<void> {
     const cleaned = symbols.map(s => ({...s, symbol_domain: domainId}));
-    await fetch(`${getApiUrl()}/domains/${domainId}/symbols/bulk`, {
+    await apiFetch(`/domains/${domainId}/symbols/bulk`, {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify(cleaned)
     });
   },
 
   async processRefactorOperation(updates: { old_id: string, symbol_data: SymbolDef }[]): Promise<{ count: number, renamedIds: string[] }> {
-      const res = await fetch(`${getApiUrl()}/symbols/refactor`, {
+      const res = await apiFetch('/symbols/refactor', {
           method: 'POST',
-          headers: getHeaders(),
           body: JSON.stringify({ updates })
       });
       if (!res.ok) throw new Error("Refactor failed");
@@ -115,9 +97,8 @@ export const domainService = {
   },
 
   async compressSymbols(newSymbol: SymbolDef, oldIds: string[]): Promise<{ newId: string, removedIds: string[] }> {
-      const res = await fetch(`${getApiUrl()}/symbols/compress`, {
+      const res = await apiFetch('/symbols/compress', {
           method: 'POST',
-          headers: getHeaders(),
           body: JSON.stringify({ newSymbol, oldIds })
       });
       if (!res.ok) throw new Error("Compression failed");
@@ -152,28 +133,31 @@ export const domainService = {
   },
 
   async findById(id: string): Promise<SymbolDef | null> {
-    const res = await fetch(`${getApiUrl()}/symbols/${id}`, { headers: getHeaders() });
+    const res = await apiFetch(`/symbols/${id}`);
     if (!res.ok) return null;
     return await res.json();
   },
 
   async getMetadata(): Promise<any[]> {
-     const res = await fetch(`${getApiUrl()}/domains`, { headers: getHeaders() });
+     const res = await apiFetch('/domains');
      if (!res.ok) return [];
      const domains = await res.json();
      
-     // Hydrate with counts - API listDomains returns basic info usually, 
-     // but the UI expects 'count'. We might need to fetch symbols length if the API doesn't provide it.
-     // For performance, we'll assume the API /domains endpoint returns what's needed or we do parallel fetches.
-     // The provided spec for /domains returns Domain object which doesn't have count.
-     // We will fetch counts.
-     
+     // If server already provides count, use it. Otherwise hydrate.
+     if (domains.length > 0 && typeof domains[0].count === 'number') {
+         return domains.map((d: any) => ({
+             ...d,
+             lastUpdated: d.lastUpdated || Date.now()
+         }));
+     }
+
+     // Fallback for servers that don't return count
      const enhanced = await Promise.all(domains.map(async (d: any) => {
          const syms = await this.getSymbols(d.id);
          return {
              ...d,
              count: syms.length,
-             lastUpdated: Date.now() // API doesn't give this
+             lastUpdated: Date.now()
          };
      }));
      

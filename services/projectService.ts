@@ -1,21 +1,11 @@
-
 import { ProjectMeta, ProjectImportStats } from '../types';
-import { getApiUrl } from './config';
-
-const getHeaders = () => {
-    const key = localStorage.getItem('signalzero_api_key') || '';
-    return {
-        'Content-Type': 'application/json',
-        'x-api-key': key
-    };
-};
+import { apiFetch } from './api';
 
 export const projectService = {
     async export(meta: ProjectMeta, systemPrompt: string): Promise<Blob> {
         // Note: systemPrompt is now managed on the server, meta is just passed for file generation info
-        const res = await fetch(`${getApiUrl()}/project/export`, {
+        const res = await apiFetch('/project/export', {
             method: 'POST',
-            headers: getHeaders(),
             body: JSON.stringify({ meta })
         });
         
@@ -24,8 +14,6 @@ export const projectService = {
     },
 
     async import(file: File): Promise<{ systemPrompt: string, stats: ProjectImportStats }> {
-        const formData = new FormData();
-        
         // Convert file to base64 to match spec which expects JSON body with base64 string
         // requestBody: content: application/json: schema: { data: string (base64) }
         const base64 = await new Promise<string>((resolve, reject) => {
@@ -35,9 +23,8 @@ export const projectService = {
             reader.onerror = error => reject(error);
         });
 
-        const res = await fetch(`${getApiUrl()}/project/import`, {
+        const res = await apiFetch('/project/import', {
             method: 'POST',
-            headers: getHeaders(),
             body: JSON.stringify({ data: base64 })
         });
 
@@ -46,7 +33,7 @@ export const projectService = {
         const result = await res.json();
         
         // Fetch the updated system prompt after import
-        const promptRes = await fetch(`${getApiUrl()}/system/prompt`, { headers: getHeaders() });
+        const promptRes = await apiFetch('/system/prompt');
         const promptData = await promptRes.json();
 
         return {

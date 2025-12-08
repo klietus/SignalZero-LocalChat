@@ -1,5 +1,5 @@
 
-export const DEFAULT_API_URL = 'http://localhost:3000/api';
+export const DEFAULT_API_URL = 'http://localhost:3001/api';
 const API_URL_KEY = 'signalzero_api_url';
 
 export const getApiUrl = () => {
@@ -16,4 +16,20 @@ export const setApiUrl = (url: string) => {
 
 export const isApiUrlConfigured = () => {
     return localStorage.getItem(API_URL_KEY) !== null;
+};
+
+export const validateApiConnection = async (url?: string): Promise<boolean> => {
+    const target = url || getApiUrl();
+    try {
+        const res = await fetch(`${target}/health`);
+        return res.ok;
+    } catch (e) {
+        // Fallback to checking /domains if /health isn't implemented
+        try {
+             const res2 = await fetch(`${target}/domains`);
+             return res2.ok;
+        } catch {
+             return false;
+        }
+    }
 };

@@ -1,20 +1,11 @@
-
-import { getApiUrl } from './config';
-
-const getHeaders = () => {
-    const key = localStorage.getItem('signalzero_api_key') || '';
-    return {
-        'Content-Type': 'application/json',
-        'x-api-key': key
-    };
-};
+import { apiFetch } from './api';
 
 const DEFAULT_SET_ID = 'default-test-set';
 
 export const testService = {
   async getTests(): Promise<string[]> {
     try {
-        const res = await fetch(`${getApiUrl()}/tests/sets`, { headers: getHeaders() });
+        const res = await apiFetch('/tests/sets');
         if (!res.ok) return [];
         const sets = await res.json();
         if (sets.length > 0) {
@@ -22,7 +13,7 @@ export const testService = {
         }
         return [];
     } catch (e) {
-        console.error("Failed to fetch tests", e);
+        // Logging handled by apiFetch
         return [];
     }
   },
@@ -37,9 +28,8 @@ export const testService = {
 
   async setTests(prompts: string[]): Promise<void> {
      // Create or update a default set
-     await fetch(`${getApiUrl()}/tests/sets`, {
+     await apiFetch('/tests/sets', {
          method: 'POST',
-         headers: getHeaders(),
          body: JSON.stringify({
              id: DEFAULT_SET_ID,
              name: "Default Test Suite",
@@ -50,9 +40,8 @@ export const testService = {
   },
 
   async clearTests(): Promise<void> {
-    await fetch(`${getApiUrl()}/tests/sets/${DEFAULT_SET_ID}`, {
-        method: 'DELETE',
-        headers: getHeaders()
+    await apiFetch(`/tests/sets/${DEFAULT_SET_ID}`, {
+        method: 'DELETE'
     });
   }
 };

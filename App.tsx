@@ -23,7 +23,7 @@ import { sendMessage, resetChatSession, setSystemPrompt, runSignalZeroTest } fro
 import { domainService } from './services/domainService';
 import { projectService } from './services/projectService';
 import { testService } from './services/testService';
-import { isApiUrlConfigured } from './services/config';
+import { isApiUrlConfigured, validateApiConnection } from './services/config';
 
 import { ACTIVATION_PROMPT } from './symbolic_system/activation_prompt';
 
@@ -133,6 +133,32 @@ const ImportStatusModal: React.FC<{ stats: ProjectImportStats | null; onClose: (
                             <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.testCaseCount}</div>
                         </div>
                     </div>
+                    
+                    {stats.domains && stats.domains.length > 0 && (
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase font-bold text-gray-400 font-mono tracking-wider">Domain Breakdown</label>
+                            <div className="bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                <div className="max-h-40 overflow-y-auto">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-gray-100 dark:bg-gray-900 font-bold text-gray-500 sticky top-0">
+                                            <tr>
+                                                <th className="px-3 py-2">Domain</th>
+                                                <th className="px-3 py-2 text-right">Symbols</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                            {stats.domains.sort((a,b) => b.symbolCount - a.symbolCount).map((d) => (
+                                                <tr key={d.id} className="hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                                    <td className="px-3 py-1.5 font-mono truncate max-w-[150px]" title={d.name}>{d.name}</td>
+                                                    <td className="px-3 py-1.5 text-right font-mono text-gray-600 dark:text-gray-400">{d.symbolCount}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800">
                     <button onClick={onClose} className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-mono font-bold transition-colors shadow-sm">
@@ -185,6 +211,15 @@ function App() {
       document.body.classList.add('bg-gray-50');
     }
   }, [theme]);
+
+  // Check connection on startup
+  useEffect(() => {
+      if (isApiUrlConfigured()) {
+          validateApiConnection().then(isValid => {
+              if (!isValid) setIsServerConnected(false);
+          });
+      }
+  }, []);
 
   useEffect(() => {
       const stored = localStorage.getItem('signalzero_user');

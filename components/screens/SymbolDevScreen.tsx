@@ -658,9 +658,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                 const response = await generateRefactor(synthesisInput, selectedDomain, symbolList);
 
                 // Extract tool calls manually since we are using generateContent directly
-                const calls = response.candidates?.[0]?.content?.parts
-                    ?.filter(p => p.functionCall)
-                    .map(p => p.functionCall);
+                const calls = (response.toolCalls || []) as any[];
 
                 if (calls && calls.length > 0) {
                     const call = calls.find(c => c && c.name === 'bulk_update_symbols');
@@ -1378,6 +1376,15 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                             type="text"
                                             value={safeJoin(currentSymbol.facets?.substrate, ', ')}
                                             onChange={e => handleArrayChange('facets', 'substrate', e.target.value)}
+                                            className={INPUT_STYLE}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Gate (Comma Separated)</Label>
+                                        <input
+                                            type="text"
+                                            value={safeJoin(currentSymbol.facets?.gate, ', ')}
+                                            onChange={e => handleArrayChange('facets', 'gate', e.target.value)}
                                             className={INPUT_STYLE}
                                         />
                                     </div>

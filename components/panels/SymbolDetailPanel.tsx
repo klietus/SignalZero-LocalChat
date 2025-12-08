@@ -346,6 +346,32 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                                     </div>
                                 </div>
                             )}
+
+                            {data.facets.substrate && data.facets.substrate.length > 0 && (
+                                <div className="space-y-1">
+                                    <div className="text-xs font-mono text-gray-500">Substrate</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {data.facets.substrate.map((sub, i) => (
+                                            <span key={i} className="px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-500 text-xs flex items-center gap-1 border border-blue-200 dark:border-blue-900/30">
+                                                <Box size={10} /> {safeRenderItem(sub)}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {data.facets.gate && data.facets.gate.length > 0 && (
+                                <div className="space-y-1">
+                                    <div className="text-xs font-mono text-gray-500">Gates</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {data.facets.gate.map((gate, i) => (
+                                            <span key={i} className="px-2 py-1 rounded bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-500 text-xs flex items-center gap-1 border border-rose-200 dark:border-rose-900/30">
+                                                <Activity size={10} /> {safeRenderItem(gate)}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

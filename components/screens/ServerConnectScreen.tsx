@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Server, ArrowRight, Activity } from 'lucide-react';
-import { setApiUrl, DEFAULT_API_URL } from '../../services/config';
+import { Server, ArrowRight, Activity, AlertCircle, Loader2 } from 'lucide-react';
+import { setApiUrl, DEFAULT_API_URL, validateApiConnection } from '../../services/config';
 
 interface ServerConnectScreenProps {
     onConnect: () => void;
@@ -9,11 +9,22 @@ interface ServerConnectScreenProps {
 
 export const ServerConnectScreen: React.FC<ServerConnectScreenProps> = ({ onConnect }) => {
     const [url, setUrl] = useState(DEFAULT_API_URL);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const handleConnect = () => {
+    const handleConnect = async () => {
         if (!url) return;
-        setApiUrl(url);
-        onConnect();
+        setIsLoading(true);
+        setError(null);
+
+        const isValid = await validateApiConnection(url);
+        if (isValid) {
+            setApiUrl(url);
+            onConnect();
+        } else {
+            setError("Could not connect to SignalZero Kernel. Check URL and ensure server is running.");
+        }
+        setIsLoading(false);
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -42,12 +53,17 @@ export const ServerConnectScreen: React.FC<ServerConnectScreenProps> = ({ onConn
                         <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono block">Kernel API URL</label>
                         <input
                             value={url}
-                            onChange={(e) => setUrl(e.target.value)}
+                            onChange={(e) => { setUrl(e.target.value); setError(null); }}
                             onKeyDown={handleKeyDown}
-                            className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none text-white placeholder-gray-700 transition-all"
-                            placeholder="http://localhost:3000/api"
+                            className={`w-full bg-gray-950 border ${error ? 'border-red-500/50' : 'border-gray-800'} rounded-lg p-3 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none text-white placeholder-gray-700 transition-all`}
+                            placeholder="http://localhost:3001/api"
                             autoFocus
                         />
+                        {error && (
+                            <p className="text-xs text-red-400 flex items-center gap-2 mt-1">
+                                <AlertCircle size={12} /> {error}
+                            </p>
+                        )}
                         <p className="text-[10px] text-gray-600">
                             Enter the address of your running SignalZero Kernel instance.
                         </p>
@@ -55,9 +71,18 @@ export const ServerConnectScreen: React.FC<ServerConnectScreenProps> = ({ onConn
 
                     <button
                         onClick={handleConnect}
-                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all duration-300 text-sm font-mono font-bold flex items-center justify-center gap-2 group shadow-lg shadow-indigo-900/20"
+                        disabled={isLoading}
+                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-600/50 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-300 text-sm font-mono font-bold flex items-center justify-center gap-2 group shadow-lg shadow-indigo-900/20"
                     >
-                        Connect to Kernel <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>
+                        {isLoading ? (
+                            <>
+                                <Loader2 size={16} className="animate-spin" /> Connecting...
+                            </>
+                        ) : (
+                            <>
+                                Connect to Kernel <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>
+                            </>
+                        )}
                     </button>
                  </div>
 

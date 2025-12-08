@@ -1,33 +1,22 @@
-
 import { SymbolDef, TestResult, TraceData, TestMeta, EvaluationMetrics } from '../types';
-import { getApiUrl } from './config';
-
-const getHeaders = () => {
-    const key = localStorage.getItem('signalzero_api_key') || '';
-    return {
-        'Content-Type': 'application/json',
-        'x-api-key': key
-    };
-};
+import { apiFetch } from './api';
 
 // --- Chat Service ---
 
 export const resetChatSession = async () => {
-    await fetch(`${getApiUrl()}/chat/reset`, { method: 'POST', headers: getHeaders() });
+    await apiFetch('/chat/reset', { method: 'POST' });
 };
 
 export const setSystemPrompt = async (prompt: string) => {
-    await fetch(`${getApiUrl()}/system/prompt`, {
+    await apiFetch('/system/prompt', {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({ prompt })
     });
 };
 
 export const sendMessage = async (message: string): Promise<{ text: string, toolCalls?: any[] }> => {
-    const res = await fetch(`${getApiUrl()}/chat`, {
+    const res = await apiFetch('/chat', {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({ message })
     });
     
@@ -112,9 +101,8 @@ export const runSignalZeroTest = async (
     // We use the backend test runner infrastructure
     // 1. Create a temporary test set
     const tempId = `temp-${Date.now()}`;
-    await fetch(`${getApiUrl()}/tests/sets`, {
+    await apiFetch('/tests/sets', {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({
             id: tempId,
             name: "Single Run",
@@ -124,9 +112,8 @@ export const runSignalZeroTest = async (
     });
 
     // 2. Run it
-    const runRes = await fetch(`${getApiUrl()}/tests/runs`, {
+    const runRes = await apiFetch('/tests/runs', {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({ testSetId: tempId })
     });
     
@@ -137,7 +124,7 @@ export const runSignalZeroTest = async (
     let finalRun = null;
     for(let i=0; i<30; i++) { // 30 seconds max
         await new Promise(r => setTimeout(r, 1000));
-        const check = await fetch(`${getApiUrl()}/tests/runs/${runData.runId}`, { headers: getHeaders() });
+        const check = await apiFetch(`/tests/runs/${runData.runId}`, { skipLog: true }); // reduce noise on polling
         const checkData = await check.json();
         if (checkData.status === 'completed' || checkData.status === 'failed') {
             finalRun = checkData;

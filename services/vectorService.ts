@@ -1,14 +1,5 @@
-
 import { SymbolDef, VectorSearchResult } from '../types';
-import { getApiUrl } from './config';
-
-const getHeaders = () => {
-    const key = localStorage.getItem('signalzero_api_key') || '';
-    return {
-        'Content-Type': 'application/json',
-        'x-api-key': key
-    };
-};
+import { apiFetch } from './api';
 
 export const vectorService = {
     // Operations are now server-side implicit hooks on upsert/delete.
@@ -32,13 +23,11 @@ export const vectorService = {
     async search(query: string, nResults: number = 5): Promise<VectorSearchResult[]> {
         try {
             const params = new URLSearchParams({ q: query, limit: nResults.toString() });
-            const res = await fetch(`${getApiUrl()}/symbols/search?${params.toString()}`, {
-                headers: getHeaders()
-            });
+            const res = await apiFetch(`/symbols/search?${params.toString()}`);
             if (!res.ok) return [];
             return await res.json();
         } catch (e) {
-            console.error("Vector search failed", e);
+            // Logging handled by apiFetch
             return [];
         }
     },

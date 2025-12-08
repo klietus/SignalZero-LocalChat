@@ -22,6 +22,7 @@ interface ImportCandidate {
 export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, onNavigateToForge, headerProps }) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null); // Added error state
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newDomainId, setNewDomainId] = useState('');
@@ -35,10 +36,17 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
 
   const loadData = async () => {
     setLoading(true);
+    setError(null); // Clear previous errors
     try {
         const meta = await domainService.getMetadata();
         setItems(meta);
-    } catch(e) { console.error(e); }
+        if (meta.length === 0) {
+            setError("No domains found. Please create or import one."); // More specific message
+        }
+    } catch(e: any) { // Catch as any for error type
+      console.error("SymbolStoreScreen: Error loading data:", e);
+      setError(e.message || "Failed to load domains.");
+    }
     finally { setLoading(false); }
   };
 
@@ -128,23 +136,41 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
                 <Database size={20} className="text-blue-500 mt-0.5 shrink-0" />
                 <div className="text-sm text-blue-800 dark:text-blue-200"><strong className="block mb-1 font-mono uppercase text-xs">API Connected</strong>Domains are fetched from the SignalZero Kernel API.</div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {items.length === 0 && !loading && <div className="col-span-full text-center py-12 text-gray-400 font-mono text-sm">No domains found. Create or Import one.</div>}
-                {items.map((item) => (
-                    <div key={item.id} className={`relative p-5 rounded-lg border transition-all flex flex-col justify-between group ${item.enabled ? 'bg-white dark:bg-gray-900 border-emerald-500/30 shadow-sm' : 'bg-gray-100 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 opacity-75'}`}>
-                        <div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="min-w-0"><h3 className="font-bold font-mono text-gray-900 dark:text-gray-100 truncate max-w-[150px]">{item.name}</h3><div className="text-[10px] text-gray-400 font-mono mt-0.5 truncate max-w-[150px]">{item.id}</div></div>
-                                <div className="flex items-center gap-1 shrink-0"><button onClick={() => handleToggle(item.id, item.enabled)} className={`transition-colors p-1 ${item.enabled ? 'text-emerald-500 hover:text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>{item.enabled ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}</button></div>
+            
+            {loading && items.length === 0 && (
+                <div className="col-span-full text-center py-12 text-gray-400 font-mono text-sm flex flex-col items-center gap-2">
+                    <Loader2 className="animate-spin" size={24} />
+                    Loading domains...
+                </div>
+            )}
+
+            {!loading && error && (
+                <div className="col-span-full text-center py-12 text-red-500 font-mono text-sm">
+                    ERROR: {error}
+                </div>
+            )}
+
+            {!loading && !error && items.length === 0 ? (
+                <div className="col-span-full text-center py-12 text-gray-400 font-mono text-sm">No domains found. Create or Import one.</div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {items.map((item) => (
+                        <div key={item.id} className={`relative p-5 rounded-lg border transition-all flex flex-col justify-between group ${item.enabled ? 'bg-white dark:bg-gray-900 border-emerald-500/30 shadow-sm' : 'bg-gray-100 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 opacity-75'}`}>
+                            <div>
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="min-w-0"><h3 className="font-bold font-mono text-gray-900 dark:text-gray-100 truncate max-w-[150px]">{item.name}</h3><div className="text-[10px] text-gray-400 font-mono mt-0.5 truncate max-w-[150px]">{item.id}</div></div>
+                                    <div className="flex items-center gap-1 shrink-0"><button onClick={() => handleToggle(item.id, item.enabled)} className={`transition-colors p-1 ${item.enabled ? 'text-emerald-500 hover:text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>{item.enabled ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}</button></div>
+                                </div>
+                                <div className="flex items-center gap-4 text-xs font-mono text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-3">
+                                    <div><span className="block text-[10px] text-gray-400 uppercase">Symbols</span><span className="font-bold text-lg">{item.count}</span></div>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-4 text-xs font-mono text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-3">
-                                <div><span className="block text-[10px] text-gray-400 uppercase">Symbols</span><span className="font-bold text-lg">{item.count}</span></div>
-                            </div>
+                            <button onClick={() => onNavigateToForge(item.id)} className="mt-4 w-full py-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors opacity-0 group-hover:opacity-100"><Edit3 size={12} /> Open in Forge</button>
                         </div>
-                        <button onClick={() => onNavigateToForge(item.id)} className="mt-4 w-full py-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors opacity-0 group-hover:opacity-100"><Edit3 size={12} /> Open in Forge</button>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
+
         </div>
       </div>
       {/* Create Modal */}
