@@ -48,5 +48,17 @@ export const projectService = {
             systemPrompt: promptData.prompt,
             stats: result.stats
         };
+    },
+
+    async updateActive(meta: ProjectMeta): Promise<ProjectMeta> {
+        const res = await apiFetch('/project/active', {
+            method: 'POST',
+            body: JSON.stringify({ meta })
+        });
+
+        if (!res.ok) throw new Error('Failed to save project metadata');
+
+        const data = await res.json();
+        return data.meta ?? meta;
     }
 }

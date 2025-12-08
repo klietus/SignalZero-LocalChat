@@ -28,9 +28,10 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     onNewProject
 }) => {
   const [promptText, setPromptText] = useState(systemPrompt);
-  
+
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isSavingMeta, setIsSavingMeta] = useState(false);
   
   // New Project Modal State
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
@@ -106,6 +107,21 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
       setProjectMeta({ ...projectMeta, [field]: value });
   };
 
+  const handleSaveMeta = async () => {
+      setIsSavingMeta(true);
+      const updatedMeta = { ...projectMeta, updated_at: new Date().toISOString() };
+      try {
+          const savedMeta = await projectService.updateActive(updatedMeta);
+          setProjectMeta(savedMeta);
+          alert('Project metadata saved.');
+      } catch (e) {
+          console.error('Failed to save project metadata', e);
+          alert('Failed to save project metadata: ' + String(e));
+      } finally {
+          setIsSavingMeta(false);
+      }
+  };
+
   // --- New Project Handlers ---
   const handleNewProjectClick = () => {
       setIsNewProjectModalOpen(true);
@@ -166,13 +182,22 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
               
               {/* Meta Section */}
               <section className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 font-mono border-b border-gray-100 dark:border-gray-800 pb-2 mb-4 flex items-center gap-2">
-                      <Package size={16} /> Project Metadata
-                  </h2>
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2 mb-4">
+                      <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 font-mono flex items-center gap-2">
+                          <Package size={16} /> Project Metadata
+                      </h2>
+                      <button
+                          onClick={handleSaveMeta}
+                          disabled={isSavingMeta}
+                          className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs font-mono font-bold transition-colors disabled:opacity-70"
+                      >
+                          {isSavingMeta ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} Save Metadata
+                      </button>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="space-y-1">
                           <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">Project Name</label>
-                          <input 
+                          <input
                               value={projectMeta.name}
                               onChange={(e) => handleChangeMeta('name', e.target.value)}
                               className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
