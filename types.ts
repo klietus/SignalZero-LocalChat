@@ -130,6 +130,13 @@ export interface TestMeta {
     symbolCount: number;
 }
 
+export interface TestCase {
+  id?: string;
+  name?: string;
+  prompt: string;
+  expectedActivations: string[];
+}
+
 export interface TestResult {
   id: string;
   prompt: string;
@@ -140,6 +147,39 @@ export interface TestResult {
   traces?: TraceData[];
   meta?: TestMeta;
   error?: string;
+  expectedActivations?: string[];
+  missingActivations?: string[];
+  activationCheckPassed?: boolean;
+  compareWithBaseModel?: boolean;
+  testCaseName?: string;
+}
+
+export interface TestSet {
+  id: string;
+  name: string;
+  description?: string;
+  tests: TestCase[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TestRunSummary {
+  total?: number;
+  completed?: number;
+  passed?: number;
+  failed?: number;
+}
+
+export interface TestRun {
+  id: string;
+  testSetId: string;
+  testSetName?: string;
+  compareWithBaseModel?: boolean;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  startTime?: string;
+  endTime?: string;
+  results?: TestResult[];
+  summary?: TestRunSummary;
 }
 
 export interface ProjectMeta {

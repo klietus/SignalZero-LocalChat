@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Terminal, ShieldCheck, MessageSquare, Database } from 'lucide-react';
-import { Message, Sender, UserProfile, TraceData, SymbolDef, TestResult, ProjectMeta, ProjectImportStats } from './types';
+import { Message, Sender, UserProfile, TraceData, SymbolDef, ProjectMeta, ProjectImportStats } from './types';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { SettingsDialog } from './components/SettingsDialog';
@@ -19,7 +19,7 @@ import { ContextScreen } from './components/screens/ContextScreen';
 import { HelpScreen } from './components/screens/HelpScreen';
 import { ServerConnectScreen } from './components/screens/ServerConnectScreen';
 
-import { sendMessage, resetChatSession, setSystemPrompt, runSignalZeroTest, getSystemPrompt } from './services/gemini';
+import { sendMessage, resetChatSession, setSystemPrompt, getSystemPrompt } from './services/gemini';
 import { domainService } from './services/domainService';
 import { projectService } from './services/projectService';
 import { testService } from './services/testService';
@@ -196,8 +196,6 @@ function App() {
   const [traceLog, setTraceLog] = useState<TraceData[]>([]);
   const [isTracePanelOpen, setIsTracePanelOpen] = useState(false);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
-  const [testResults, setTestResults] = useState<TestResult[]>([]);
-  const [isTestRunning, setIsTestRunning] = useState(false);
 
   // Server Connection State
   const [isServerConnected, setIsServerConnected] = useState(isApiUrlConfigured());
@@ -445,41 +443,6 @@ function App() {
       }
   };
 
-  const handleRunTests = async (prompts: string[]) => {
-      if (prompts.length === 0) return;
-      setIsTestRunning(true);
-      setTestResults(prompts.map((p, i) => ({ id: `test-${i}`, prompt: p, status: 'pending' })));
-
-      try {
-          for (let i = 0; i < prompts.length; i++) {
-              const prompt = prompts[i];
-              setTestResults(prev => { const c = [...prev]; c[i].status = 'running'; return c; });
-
-              const szResult = await runSignalZeroTest(prompt);
-              
-              setTestResults(prev => {
-                  const copy = [...prev];
-                  copy[i] = {
-                      ...copy[i],
-                      status: 'completed',
-                      signalZeroResponse: szResult.text,
-                      baselineResponse: "N/A (Server Eval)", // API handles this now
-                      // API should return evaluation in meta or similar, simplifying for now
-                      evaluation: { 
-                          sz: { alignment_score: 90, drift_detected: false, symbolic_depth: 80, reasoning_depth: 80, auditability_score: 90 },
-                          base: { alignment_score: 50, drift_detected: false, symbolic_depth: 0, reasoning_depth: 50, auditability_score: 20 },
-                          overall_reasoning: "Automated Evaluation via Kernel"
-                      },
-                      traces: szResult.traces,
-                      meta: szResult.meta
-                  };
-                  return copy;
-              });
-          }
-      } catch (e) { console.error(e); }
-      finally { setIsTestRunning(false); }
-  };
-
   const handleNewProject = async (skipConfirm: boolean = false) => {
       if (!skipConfirm && !confirm("Start a new project?")) return;
       handleClearChat();
@@ -525,7 +488,7 @@ function App() {
             ) : currentView === 'store' ? (
                 <SymbolStoreScreen headerProps={getHeaderProps('Store')} onBack={() => setCurrentView('chat')} onNavigateToForge={(dom) => { setDevInitialDomain(dom); setCurrentView('dev'); }} />
             ) : currentView === 'test' ? (
-                <TestRunnerScreen headerProps={getHeaderProps('Tests')} onBack={() => setCurrentView('chat')} results={testResults} isRunning={isTestRunning} onRun={handleRunTests} />
+                <TestRunnerScreen headerProps={getHeaderProps('Tests')} />
             ) : currentView === 'help' ? (
                 <HelpScreen headerProps={getHeaderProps('Docs')} />
             ) : (
