@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { User, Terminal, Network, ChevronDown, ChevronRight, Activity, Globe } from 'lucide-react';
+import { User, Terminal, Network, ChevronDown, ChevronRight, Activity, Globe, Copy } from 'lucide-react';
 // @ts-ignore
 import ReactMarkdown from 'react-markdown';
 // @ts-ignore
@@ -76,8 +76,8 @@ const DomainTag: React.FC<DomainTagProps> = ({ id, name, onClick }) => {
   );
 };
 
-const TraceAggregator: React.FC<{ traces: TraceData[], onTraceClick?: (id: string) => void }> = ({ traces, onTraceClick }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+const TraceAggregator: React.FC<{ traces: TraceData[], onTraceClick?: (id: string) => void, defaultExpanded?: boolean }> = ({ traces, onTraceClick, defaultExpanded = false }) => {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   if (traces.length === 0) return null;
 
@@ -124,6 +124,10 @@ const TraceAggregator: React.FC<{ traces: TraceData[], onTraceClick?: (id: strin
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick, onDomainClick, onTraceClick }) => {
   const isUser = message.role === Sender.USER;
+  const isSystem = message.role === Sender.SYSTEM;
+  const [showToolList, setShowToolList] = useState(false);
+  const [showTraceList, setShowTraceList] = useState(false);
+  const [copyLabel, setCopyLabel] = useState('Copy');
 
   // Extract traces and clean content
   const { traces, contentWithoutTraces } = useMemo(() => {
@@ -145,6 +149,30 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
 
     return { traces: extractedTraces, contentWithoutTraces: cleanContent };
   }, [message.content, message.id]);
+
+  // Aggregated view of tool calls for compact header display
+  const toolSummary = useMemo(() => {
+    if (!message.toolCalls || message.toolCalls.length === 0) return '';
+    const counts = message.toolCalls.reduce((acc: Record<string, number>, call) => {
+      const key = call.name.replace(/_/g, ' ');
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts)
+      .map(([name, count]) => `${name}${count > 1 ? ` ×${count}` : ''}`)
+      .join(' • ');
+  }, [message.toolCalls]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(contentWithoutTraces || message.content);
+      setCopyLabel('Copied');
+      setTimeout(() => setCopyLabel('Copy'), 1500);
+    } catch (err) {
+      setCopyLabel('Copy failed');
+      setTimeout(() => setCopyLabel('Copy'), 2000);
+    }
+  };
 
   // Formatter to handle code blocks, <sz_symbol> blocks, <sz_domain> blocks, and Markdown text
   const formatText = (text: string) => {
@@ -286,15 +314,64 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
               : 'bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-800'
             }`}>
             
+            {/* Meta controls */}
+            {(!!toolSummary || traces.length > 0 || isSystem) && (
+              <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 mb-2 w-full">
+                {toolSummary && (
+                  <button
+                    onClick={() => setShowToolList(prev => !prev)}
+                    className="flex items-center gap-2 px-2 py-1 rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 text-left flex-1 min-w-0 hover:border-gray-300 dark:hover:border-gray-700"
+                  >
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Terminal size={12} />
+                      <span className="font-semibold text-gray-700 dark:text-gray-200">Tool calls</span>
+                      <span className="truncate">{toolSummary}</span>
+                    </div>
+                    <ChevronDown size={12} className={`transition-transform ${showToolList ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
+
+                <div className="flex items-center gap-2">
+                  {traces.length > 0 && (
+                    <button
+                      onClick={() => setShowTraceList(prev => !prev)}
+                      className="relative flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800 hover:border-amber-200 dark:hover:border-amber-700"
+                      title="View reasoning traces"
+                    >
+                      <Network size={14} />
+                      {traces.length > 1 && (
+                        <span className="absolute -top-1 -right-1 text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-amber-600 text-white shadow">
+                          {traces.length}
+                        </span>
+                      )}
+                    </button>
+                  )}
+
+                  {isSystem && (
+                    <button
+                      onClick={handleCopy}
+                      className="flex items-center gap-1 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                      title="Copy system response"
+                    >
+                      <Copy size={12} />
+                      <span className="text-[11px] font-medium">{copyLabel}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Tool Indicators */}
-            {message.toolCalls && message.toolCalls.length > 0 && (
+            {message.toolCalls && message.toolCalls.length > 0 && showToolList && (
                <div className="mb-3 w-full border-b border-gray-100 dark:border-gray-800 pb-2">
                  <ToolIndicator toolCalls={message.toolCalls} isFinished={!message.isStreaming || message.content.length > 0} />
                </div>
             )}
 
             {/* Aggregated Traces Header */}
-            <TraceAggregator traces={traces} onTraceClick={onTraceClick} />
+            {showTraceList && (
+              <TraceAggregator traces={traces} onTraceClick={onTraceClick} defaultExpanded />
+            )}
 
             {/* Message Content */}
             <div className={`w-full break-words`}>
