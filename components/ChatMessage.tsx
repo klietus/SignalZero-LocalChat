@@ -125,6 +125,7 @@ const TraceAggregator: React.FC<{ traces: TraceData[], onTraceClick?: (id: strin
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick, onDomainClick, onTraceClick }) => {
   const isUser = message.role === Sender.USER;
   const isSystem = message.role === Sender.SYSTEM;
+  const isAssistantResponse = message.role !== Sender.USER;
   const [showToolList, setShowToolList] = useState(false);
   const [showTraceList, setShowTraceList] = useState(false);
   const [copyLabel, setCopyLabel] = useState('Copy');
@@ -315,7 +316,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
             }`}>
             
             {/* Meta controls */}
-            {(!!toolSummary || traces.length > 0 || isSystem) && (
+              {(!!toolSummary || traces.length > 0 || isAssistantResponse) && (
               <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 mb-2 w-full">
                 {toolSummary && (
                   <button
@@ -347,11 +348,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
                     </button>
                   )}
 
-                  {isSystem && (
+                  {isAssistantResponse && (
                     <button
                       onClick={handleCopy}
                       className="flex items-center gap-1 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
-                      title="Copy system response"
+                      title="Copy response"
                     >
                       <Copy size={12} />
                       <span className="text-[11px] font-medium">{copyLabel}</span>
