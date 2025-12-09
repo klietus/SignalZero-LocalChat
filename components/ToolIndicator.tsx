@@ -11,28 +11,28 @@ export const ToolIndicator: React.FC<ToolIndicatorProps> = ({ toolCalls, isFinis
   if (!toolCalls || toolCalls.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2 my-2">
+    <div className="flex flex-col gap-2 mt-2">
       {toolCalls.map((call, idx) => (
-        <div 
+        <div
           key={call.id || idx}
-          className="flex items-center gap-3 p-3 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 max-w-full md:max-w-md animate-in fade-in slide-in-from-bottom-2 duration-300"
+          className="flex items-center gap-3 p-2 text-xs rounded-md bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 max-w-full md:max-w-md animate-in fade-in slide-in-from-bottom-2 duration-300"
         >
-          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+          <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
             {isFinished ? (
-              <CheckCircle2 size={16} />
+              <CheckCircle2 size={14} />
             ) : (
-              <Terminal size={16} />
+              <Terminal size={14} />
             )}
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
                 <span className="font-semibold text-gray-700 dark:text-gray-200 truncate">
                     {call.name.replace(/_/g, ' ')}
                 </span>
-                {!isFinished && <CircleDashed size={14} className="animate-spin text-gray-400"/>}
+                {!isFinished && <CircleDashed size={12} className="animate-spin text-gray-400"/>}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate mt-0.5">
+            <div className="text-[11px] text-gray-500 dark:text-gray-400 font-mono truncate mt-0.5">
               Arguments: {JSON.stringify(call.args)}
             </div>
           </div>
