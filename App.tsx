@@ -29,6 +29,8 @@ import { traceService } from './services/traceService';
 import { ACTIVATION_PROMPT } from './symbolic_system/activation_prompt';
 
 const GOOGLE_CLIENT_ID = "242339309688-hk26i9tbv5jei62s2p1bcqsacvk8stga.apps.googleusercontent.com";
+const CHAT_HISTORY_KEY = 'signalzero_chat_history';
+const MAX_CHAT_TURNS = 50;
 
 function parseJwt(token: string) {
   var base64Url = token.split('.')[1];
@@ -202,6 +204,10 @@ function App() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const trimChatHistory = useCallback((items: Message[]) => {
+      return items.length > MAX_CHAT_TURNS ? items.slice(-MAX_CHAT_TURNS) : items;
+  }, []);
+
   const hydrateProjectContext = useCallback(async (
       options: { navigateOnMeta?: boolean; cancelRef?: { cancelled: boolean } } = {}
   ) => {
@@ -279,7 +285,35 @@ function App() {
       if (storedPrompt) {
           setActiveSystemPrompt(storedPrompt);
       }
-  }, []);
+
+      const storedChat = localStorage.getItem(CHAT_HISTORY_KEY);
+      if (storedChat) {
+          try {
+              const parsed: Message[] = JSON.parse(storedChat);
+              const hydrated = parsed.map(msg => ({
+                  ...msg,
+                  timestamp: new Date(msg.timestamp)
+              }));
+              setMessages(trimChatHistory(hydrated));
+          } catch (e) {
+              console.error('[Chat] Failed to hydrate chat history', e);
+          }
+      }
+  }, [trimChatHistory]);
+
+  useEffect(() => {
+      if (messages.length === 0) {
+          localStorage.removeItem(CHAT_HISTORY_KEY);
+          return;
+      }
+
+      const serializable = trimChatHistory(messages).map(msg => ({
+          ...msg,
+          timestamp: msg.timestamp.toISOString()
+      }));
+
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(serializable));
+  }, [messages, trimChatHistory]);
 
   useEffect(() => {
     // Basic trace extraction from latest message
@@ -343,6 +377,7 @@ function App() {
   const handleClearChat = () => {
     setMessages([]);
     setTraceLog([]);
+    localStorage.removeItem(CHAT_HISTORY_KEY);
     resetChatSession();
   };
 
@@ -367,7 +402,7 @@ function App() {
 
   const handleSendMessage = async (text: string) => {
     const newMessage: Message = { id: Date.now().toString(), role: Sender.USER, content: text, timestamp: new Date() };
-    setMessages(prev => [...prev, newMessage]);
+    setMessages(prev => trimChatHistory([...prev, newMessage]));
     setIsProcessing(true);
 
     try {
@@ -380,20 +415,20 @@ function App() {
             args: tc.args
         }));
 
-        setMessages(prev => [...prev, {
+        setMessages(prev => trimChatHistory([...prev, {
             id: (Date.now() + 1).toString(),
             role: Sender.MODEL,
             content: response.text,
             timestamp: new Date(),
             toolCalls: toolCallsUI
-        }]);
+        }]));
     } catch (error) {
-        setMessages(prev => [...prev, {
+        setMessages(prev => trimChatHistory([...prev, {
             id: Date.now().toString(),
             role: Sender.SYSTEM,
             content: `Error: ${String(error)}`,
             timestamp: new Date()
-        }]);
+        }]));
     } finally {
         setIsProcessing(false);
     }
