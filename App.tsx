@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Terminal, ShieldCheck, MessageSquare, Database } from 'lucide-react';
 import { Message, Sender, UserProfile, TraceData, SymbolDef, TestResult, ProjectMeta, ProjectImportStats } from './types';
 import { ChatMessage } from './components/ChatMessage';
@@ -202,6 +202,35 @@ function App() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const hydrateProjectContext = useCallback(async (
+      options: { navigateOnMeta?: boolean; cancelRef?: { cancelled: boolean } } = {}
+  ) => {
+      try {
+          const [activeMeta, prompt] = await Promise.all([
+              projectService.getActive(),
+              getSystemPrompt()
+          ]);
+
+          if (options.cancelRef?.cancelled) return;
+
+          if (prompt) {
+              setActiveSystemPrompt(prompt);
+              localStorage.setItem('signalzero_active_prompt', prompt);
+          }
+
+          if (activeMeta) {
+              setProjectMeta(activeMeta);
+              if (options.navigateOnMeta) {
+                  setCurrentView(prev => prev === 'context' ? 'project' : prev);
+              }
+          }
+      } catch (e) {
+          if (!options.cancelRef?.cancelled) {
+              console.error('[Server] Failed to hydrate project context', e);
+          }
+      }
+  }, []);
+
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -225,35 +254,22 @@ function App() {
   useEffect(() => {
       if (!isServerConnected) return;
 
-      let isCancelled = false;
+      const cancelRef = { cancelled: false };
 
-      const hydrateFromServer = async () => {
-          try {
-              const [activeMeta, prompt] = await Promise.all([
-                  projectService.getActive(),
-                  getSystemPrompt()
-              ]);
+      hydrateProjectContext({ navigateOnMeta: true, cancelRef });
 
-              if (isCancelled) return;
+      return () => { cancelRef.cancelled = true; };
+  }, [hydrateProjectContext, isServerConnected]);
 
-              if (prompt) {
-                  setActiveSystemPrompt(prompt);
-                  localStorage.setItem('signalzero_active_prompt', prompt);
-              }
+  useEffect(() => {
+      if (!isServerConnected || currentView !== 'project') return;
 
-              if (activeMeta) {
-                  setProjectMeta(activeMeta);
-                  setCurrentView(prev => prev === 'context' ? 'project' : prev);
-              }
-          } catch (e) {
-              console.error('[Server] Failed to hydrate project context', e);
-          }
-      };
+      const cancelRef = { cancelled: false };
 
-      hydrateFromServer();
+      hydrateProjectContext({ cancelRef });
 
-      return () => { isCancelled = true; };
-  }, [isServerConnected]);
+      return () => { cancelRef.cancelled = true; };
+  }, [currentView, hydrateProjectContext, isServerConnected]);
 
   useEffect(() => {
       const stored = localStorage.getItem('signalzero_user');
