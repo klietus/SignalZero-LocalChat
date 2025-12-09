@@ -202,60 +202,61 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950 font-sans">
-      <Header {...headerProps}>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Test Set</label>
-            <select
-              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-md px-2 py-1 text-sm text-gray-800 dark:text-gray-100 shadow-sm"
-              value={selectedSetId || ''}
-              onChange={(e) => setSelectedSetId(e.target.value)}
-              disabled={isLoadingSets}
-            >
-              {testSets.map(set => (
-                <option key={set.id} value={set.id}>{set.name}</option>
-              ))}
-            </select>
-            <button
-              onClick={() => setShowSetDialog(true)}
-              className="flex items-center gap-1 px-2 py-1 text-sm bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-200 rounded border border-purple-200 dark:border-purple-800 hover:bg-purple-200/80 dark:hover:bg-purple-900/60 transition-colors"
-            >
-              <Plus size={14} /> New Set
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowRunDialog(true)}
-              disabled={!selectedSetId || isStartingRun || !!pollingRunId}
-              className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md text-sm font-mono font-bold transition-colors shadow-sm"
-            >
-              {isStartingRun ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />} Run
-            </button>
-            <button
-              onClick={() => setView(view === 'history' ? 'results' : 'history')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-mono font-bold border transition-colors ${view === 'history' ? 'bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/70'}`}
-            >
-              <History size={16} /> {view === 'history' ? 'Back to Results' : 'Run History'}
-            </button>
-          </div>
-        </div>
-      </Header>
+      <Header {...headerProps} />
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-80 min-w-[300px] border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-            <div className="flex items-center justify-between mb-3">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Test Set</label>
+              <div className="flex items-center gap-2">
+                <select
+                  className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-md px-2 py-1 text-sm text-gray-800 dark:text-gray-100 shadow-sm"
+                  value={selectedSetId || ''}
+                  onChange={(e) => setSelectedSetId(e.target.value)}
+                  disabled={isLoadingSets}
+                >
+                  {testSets.map(set => (
+                    <option key={set.id} value={set.id}>{set.name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setShowSetDialog(true)}
+                  className="flex items-center gap-1 px-2 py-1 text-sm bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-200 rounded border border-purple-200 dark:border-purple-800 hover:bg-purple-200/80 dark:hover:bg-purple-900/60 transition-colors"
+                >
+                  <Plus size={14} /> New Set
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Test Cases</p>
                 <p className="text-xs text-gray-500">{selectedSet ? selectedSet.tests.length : 0} cases</p>
               </div>
-              <button
-                onClick={() => setShowCaseForm(v => !v)}
-                disabled={!selectedSetId}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-200 rounded border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200/80 dark:hover:bg-emerald-900/50 disabled:opacity-50"
-              >
-                <FilePlus size={14} /> Add Case
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowRunDialog(true)}
+                  disabled={!selectedSetId || isStartingRun || !!pollingRunId}
+                  title="Start run"
+                  className="p-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-md shadow-sm transition-colors"
+                >
+                  {isStartingRun ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+                </button>
+                <button
+                  onClick={() => setView(view === 'history' ? 'results' : 'history')}
+                  title={view === 'history' ? 'Back to results' : 'Run history'}
+                  className={`p-2 rounded-md border transition-colors ${view === 'history' ? 'bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/70'}`}
+                >
+                  <History size={16} />
+                </button>
+                <button
+                  onClick={() => setShowCaseForm(v => !v)}
+                  disabled={!selectedSetId}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-200 rounded border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200/80 dark:hover:bg-emerald-900/50 disabled:opacity-50"
+                >
+                  <FilePlus size={14} /> Add Case
+                </button>
+              </div>
             </div>
 
             {showCaseForm && (
