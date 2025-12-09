@@ -12,7 +12,9 @@ import {
   ClipboardList,
   FilePlus,
   X,
-  BarChart3
+  BarChart3,
+  Minus,
+  Trash2
 } from 'lucide-react';
 import { Header, HeaderProps } from '../Header';
 import { TraceVisualizer } from '../TraceVisualizer';
@@ -137,6 +139,15 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
     if (created) setSelectedSetId(created.id);
   };
 
+  const handleDeleteSet = async () => {
+    if (!selectedSetId) return;
+    await testService.deleteTestSet(selectedSetId);
+    const sets = await testService.listTestSets();
+    setTestSets(sets);
+    setSelectedSetId(sets[0]?.id || null);
+    setRuns(prev => prev.filter(run => run.testSetId !== selectedSetId));
+  };
+
   const handleAddTestCase = async () => {
     if (!selectedSetId || !casePrompt.trim()) return;
     setIsSavingCase(true);
@@ -156,6 +167,12 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
     setCasePrompt('');
     setCaseActivations('');
     setIsSavingCase(false);
+  };
+
+  const handleDeleteTestCase = async (testId?: string) => {
+    if (!selectedSetId || !testId) return;
+    await testService.deleteTestCase(selectedSetId, testId);
+    await loadTestSets();
   };
 
   const pollRun = async (runId: string) => {
@@ -222,9 +239,18 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
                 </select>
                 <button
                   onClick={() => setShowSetDialog(true)}
-                  className="flex items-center gap-1 px-2 py-1 text-sm bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-200 rounded border border-purple-200 dark:border-purple-800 hover:bg-purple-200/80 dark:hover:bg-purple-900/60 transition-colors"
+                  title="Create new test set"
+                  className="p-2 text-purple-700 dark:text-purple-200 bg-purple-100 dark:bg-purple-900/40 rounded border border-purple-200 dark:border-purple-800 hover:bg-purple-200/80 dark:hover:bg-purple-900/60 transition-colors"
                 >
-                  <Plus size={14} /> New Set
+                  <Plus size={14} />
+                </button>
+                <button
+                  onClick={handleDeleteSet}
+                  disabled={!selectedSetId}
+                  title="Delete selected test set"
+                  className="p-2 text-rose-700 dark:text-rose-200 bg-rose-50 dark:bg-rose-900/20 rounded border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 size={14} />
                 </button>
               </div>
             </div>
@@ -252,9 +278,10 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
                 <button
                   onClick={() => setShowCaseForm(v => !v)}
                   disabled={!selectedSetId}
-                  className="flex items-center gap-1 px-2 py-1 text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-200 rounded border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200/80 dark:hover:bg-emerald-900/50 disabled:opacity-50"
+                  title="Add test case"
+                  className="p-2 text-emerald-700 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/30 rounded border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-200/80 dark:hover:bg-emerald-900/50 disabled:opacity-50"
                 >
-                  <FilePlus size={14} /> Add Case
+                  <FilePlus size={14} />
                 </button>
               </div>
             </div>
@@ -311,7 +338,16 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
                       <p className="text-sm font-bold text-gray-800 dark:text-gray-100">{test.name || 'Unnamed Case'}</p>
                       <p className="text-xs text-gray-500 line-clamp-2">{test.prompt}</p>
                     </div>
-                    <ClipboardList size={16} className="text-gray-400" />
+                    <div className="flex items-center gap-2">
+                      <ClipboardList size={16} className="text-gray-400" />
+                      <button
+                        onClick={() => handleDeleteTestCase(test.id)}
+                        title="Delete test case"
+                        className="p-1 rounded-full text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
+                      >
+                        <Minus size={14} />
+                      </button>
+                    </div>
                   </div>
                   {test.expectedActivations && test.expectedActivations.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">

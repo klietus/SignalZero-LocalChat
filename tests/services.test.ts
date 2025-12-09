@@ -9,7 +9,7 @@ import { createToolExecutor, toolDeclarations } from '../services/toolsService.j
 import { traceService } from '../services/traceService.js';
 import { vectorService } from '../services/vectorService.js';
 import { logger } from '../services/logger.js';
-import { SymbolDef, TestCase, TraceData, VectorSearchResult, ProjectMeta } from '../types.js';
+import { SymbolDef, TestCase, TraceData, VectorSearchResult, ProjectMeta, TestSet } from '../types.js';
 
 class MemoryStorage {
   private store = new Map<string, string>();
@@ -142,14 +142,34 @@ test('projectService handles null responses and exports', { concurrency: false }
 });
 
 test('testService handles set lifecycle', { concurrency: false }, async () => {
-  const sets = [{ id: 'set1', name: 'Demo', tests: [] }];
+  const sets: TestSet[] = [{ id: 'set1', name: 'Demo', tests: [{ id: 'case-1', prompt: 'demo', expectedActivations: [] }] }];
   (globalThis as any).fetch = async (_url: string, options?: any) => {
     if (options?.method === 'POST') {
         const body = options?.body ? JSON.parse(options.body) : {};
-        if (body.id) {
+        if (_url.includes('/tests/sets')) {
           sets.push({ id: body.id, name: body.name || body.id, tests: body.tests || [] });
+        } else if (_url.endsWith('/tests')) {
+          const set = sets.find(s => s.id === body.testSetId);
+          if (set) {
+            const newCaseId = `case-${set.tests.length + 1}`;
+            set.tests.push({ id: newCaseId, prompt: body.prompt, expectedActivations: body.expectedActivations, name: body.name });
+          }
         }
         return new Response(JSON.stringify({}), { status: 200 });
+    }
+    if (options?.method === 'DELETE') {
+      if (_url.includes('/tests/sets/')) {
+        const id = _url.split('/').pop();
+        const idx = sets.findIndex(s => s.id === id);
+        if (idx >= 0) sets.splice(idx, 1);
+      } else {
+        const parts = _url.split('/');
+        const testId = parts.pop();
+        const setId = parts.pop();
+        const set = sets.find(s => s.id === setId);
+        if (set) set.tests = set.tests.filter(t => t.id !== testId);
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
     }
     return new Response(JSON.stringify(sets));
   };
@@ -157,6 +177,10 @@ test('testService handles set lifecycle', { concurrency: false }, async () => {
   assert.equal(listed.length, 1);
   const created = await testService.createOrUpdateTestSet({ id: 'set2', name: 'Demo2', tests: [] } as any);
   assert.equal(created?.id, 'set2');
+  await testService.addTestCase('set1', { name: 'Demo Case', prompt: 'prompt2', expectedActivations: [] });
+  assert.equal(sets[0].tests.length, 2);
+  await testService.deleteTestCase('set1', 'case-2');
+  assert.equal(sets[0].tests.length, 1);
   await testService.deleteTestSet('set2');
 });
 

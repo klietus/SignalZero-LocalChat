@@ -35,6 +35,10 @@ export const testService = {
     await apiFetch(`/tests/sets/${id}`, { method: 'DELETE' });
   },
 
+  async deleteTestCase(testSetId: string, testId: string): Promise<void> {
+    await apiFetch(`/tests/${testSetId}/${testId}`, { method: 'DELETE' });
+  },
+
   async addTestCase(testSetId: string, testCase: TestCase): Promise<void> {
     await apiFetch('/tests', {
         method: 'POST',
