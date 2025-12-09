@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsc -p tsconfig.test.json && node scripts/fix-dist-imports.mjs && node --experimental-specifier-resolution=node --test dist-tests/**/*.test.js"
   },
   "dependencies": {
     "@google/genai": "^1.31.0",
