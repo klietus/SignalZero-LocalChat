@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist-tests",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": false,
+    "types": ["node"],
+    "jsx": "react-jsx",
+    "strict": false
+  },
+  "include": ["tests/**/*"],
+  "exclude": ["node_modules", "dist-tests"]
+}
