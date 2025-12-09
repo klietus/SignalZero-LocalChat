@@ -274,11 +274,10 @@ function App() {
   useEffect(() => {
       const stored = localStorage.getItem('signalzero_user');
       if (stored) setUser(JSON.parse(stored));
-      
+
       const storedPrompt = localStorage.getItem('signalzero_active_prompt');
       if (storedPrompt) {
           setActiveSystemPrompt(storedPrompt);
-          setSystemPrompt(storedPrompt).catch(console.error);
       }
   }, []);
 
