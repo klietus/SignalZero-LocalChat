@@ -1,47 +1,80 @@
 import { apiFetch } from './api';
+import { TestCase, TestRun, TestSet } from '../types';
 
-const DEFAULT_SET_ID = 'default-test-set';
+const generateTestSetId = (name: string) => {
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return `${slug || 'test-set'}-${Date.now()}`;
+};
 
 export const testService = {
-  async getTests(): Promise<string[]> {
+  async listTestSets(): Promise<TestSet[]> {
     try {
         const res = await apiFetch('/tests/sets');
         if (!res.ok) return [];
-        const sets = await res.json();
-        if (sets.length > 0) {
-            return sets[0].tests; // Return first set for now to match UI expectations
-        }
-        return [];
+        return await res.json();
     } catch (e) {
-        // Logging handled by apiFetch
         return [];
     }
   },
 
-  async addTest(prompt: string): Promise<void> {
-    // Fetch existing, append, save. Naive implementation to match previous behavior
-    const current = await this.getTests();
-    if (!current.includes(prompt)) {
-        await this.setTests([...current, prompt]);
+  async createOrUpdateTestSet(partial: Omit<TestSet, 'id'> & { id?: string }): Promise<TestSet | null> {
+    const payload = {
+        ...partial,
+        id: partial.id || generateTestSetId(partial.name),
+    };
+    const res = await apiFetch('/tests/sets', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) return null;
+    const sets = await this.listTestSets();
+    return sets.find(s => s.id === payload.id) || null;
+  },
+
+  async deleteTestSet(id: string): Promise<void> {
+    await apiFetch(`/tests/sets/${id}`, { method: 'DELETE' });
+  },
+
+  async addTestCase(testSetId: string, testCase: TestCase): Promise<void> {
+    await apiFetch('/tests', {
+        method: 'POST',
+        body: JSON.stringify({
+            testSetId,
+            prompt: testCase.prompt,
+            expectedActivations: testCase.expectedActivations,
+            name: testCase.name
+        })
+    });
+  },
+
+  async startTestRun(testSetId: string, compareWithBaseModel: boolean): Promise<string | null> {
+    const res = await apiFetch('/tests/runs', {
+        method: 'POST',
+        body: JSON.stringify({ testSetId, compareWithBaseModel })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.runId || null;
+  },
+
+  async listTestRuns(): Promise<TestRun[]> {
+    try {
+        const res = await apiFetch('/tests/runs');
+        if (!res.ok) return [];
+        return await res.json();
+    } catch (e) {
+        return [];
     }
   },
 
-  async setTests(prompts: string[]): Promise<void> {
-     // Create or update a default set
-     await apiFetch('/tests/sets', {
-         method: 'POST',
-         body: JSON.stringify({
-             id: DEFAULT_SET_ID,
-             name: "Default Test Suite",
-             description: "Client managed test suite",
-             tests: prompts
-         })
-     });
+  async getTestRun(id: string): Promise<TestRun | null> {
+    const res = await apiFetch(`/tests/runs/${id}`);
+    if (!res.ok) return null;
+    return await res.json();
   },
 
   async clearTests(): Promise<void> {
-    await apiFetch(`/tests/sets/${DEFAULT_SET_ID}`, {
-        method: 'DELETE'
-    });
+    const sets = await this.listTestSets();
+    await Promise.all(sets.map(set => this.deleteTestSet(set.id)));
   }
 };
