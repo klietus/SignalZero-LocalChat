@@ -229,17 +229,9 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
                                 <div className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed min-h-[48px] max-h-[48px] overflow-hidden">
                                     {item.description || 'No description provided.'}
                                 </div>
-                                {item.invariants && item.invariants.length > 0 && (
-                                    <div className="mt-3 flex flex-wrap gap-1">
-                                        {item.invariants.map((inv: string, idx: number) => (
-                                            <span key={idx} className="text-[10px] font-mono bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">
-                                                {inv}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
                                 <div className="flex items-center gap-4 text-xs font-mono text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-3">
                                     <div><span className="block text-[10px] text-gray-400 uppercase">Symbols</span><span className="font-bold text-lg">{item.count}</span></div>
+                                    <div><span className="block text-[10px] text-gray-400 uppercase">Invariants</span><span className="font-bold text-lg">{item.invariants?.length ?? 0}</span></div>
                                 </div>
                             </div>
                             <button onClick={() => onNavigateToForge(item.id)} className="mt-4 w-full py-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors opacity-0 group-hover:opacity-100"><Edit3 size={12} /> Open in Forge</button>
