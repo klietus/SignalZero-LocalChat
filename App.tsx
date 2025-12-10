@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Terminal, ShieldCheck, MessageSquare, Database } from 'lucide-react';
+import { MessageSquare, Database, Trash } from 'lucide-react';
 import { Message, Sender, UserProfile, TraceData, SymbolDef, ProjectMeta, ProjectImportStats } from './types';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
@@ -28,87 +28,8 @@ import { traceService } from './services/traceService';
 
 import { ACTIVATION_PROMPT } from './symbolic_system/activation_prompt';
 
-const GOOGLE_CLIENT_ID = "242339309688-hk26i9tbv5jei62s2p1bcqsacvk8stga.apps.googleusercontent.com";
 const CHAT_HISTORY_KEY = 'signalzero_chat_history';
 const MAX_CHAT_TURNS = 50;
-
-function parseJwt(token: string) {
-  var base64Url = token.split('.')[1];
-  var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-  var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-  }).join(''));
-  return JSON.parse(jsonPayload);
-}
-
-// ... LoginScreen, ImportStatusModal components (unchanged) ...
-
-const LoginScreen: React.FC<{ onGoogleLogin: (response: any) => void; onGuestLogin: () => void; }> = ({ onGoogleLogin, onGuestLogin }) => {
-  useEffect(() => {
-    const initGoogle = () => {
-      // @ts-ignore
-      if (window.google) {
-        // @ts-ignore
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: onGoogleLogin
-        });
-        // @ts-ignore
-        window.google.accounts.id.renderButton(
-          document.getElementById("googleSignInDiv"),
-          { theme: "outline", size: "large", width: 280, shape: "rectangular" }
-        );
-      }
-    };
-    const timer = setInterval(() => {
-        // @ts-ignore
-        if (window.google) {
-            initGoogle();
-            clearInterval(timer);
-        }
-    }, 100);
-    return () => clearInterval(timer);
-  }, [onGoogleLogin]);
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950 text-gray-200 p-4 font-mono">
-        <div className="max-w-md w-full bg-gray-900 border border-gray-800 rounded-lg shadow-2xl p-8 relative overflow-hidden">
-             <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500/50"></div>
-             <div className="flex justify-center mb-6">
-                 <div className="p-4 bg-gray-950 rounded-full border border-gray-800 text-emerald-500">
-                     <ShieldCheck size={48} />
-                 </div>
-             </div>
-             <h1 className="text-xl font-bold text-center mb-2 tracking-tight">SignalZero Kernel</h1>
-             <p className="text-center text-gray-500 text-xs mb-8 uppercase tracking-widest">Identity Gate Active [ΣTR]</p>
-             <div className="space-y-6">
-                 <div className="flex justify-center">
-                    <div id="googleSignInDiv" className="min-h-[40px]"></div>
-                 </div>
-                 <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-gray-800"></span>
-                    </div>
-                    <div className="relative flex justify-center text-[10px] uppercase">
-                        <span className="bg-gray-900 px-2 text-gray-600 tracking-widest">Development</span>
-                    </div>
-                 </div>
-                 <button 
-                    onClick={onGuestLogin}
-                    className="w-full py-2.5 bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 hover:border-emerald-500/30 text-gray-400 hover:text-emerald-400 rounded transition-all duration-300 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 group"
-                 >
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-600 group-hover:bg-emerald-500 transition-colors"></span>
-                    Initialize Guest Session
-                 </button>
-             </div>
-             <div className="mt-8 text-center text-[10px] text-gray-600">
-                 Secure Symbolic Environment v2.0 (UI Only)
-             </div>
-        </div>
-    </div>
-  );
-};
-
 // ... ImportStatusModal same as before ... 
 const ImportStatusModal: React.FC<{ stats: ProjectImportStats | null; onClose: () => void; }> = ({ stats, onClose }) => {
     if (!stats) return null;
@@ -175,10 +96,11 @@ const ImportStatusModal: React.FC<{ stats: ProjectImportStats | null; onClose: (
 
 
 function App() {
+  const defaultUser: UserProfile = { name: "Guest Developer", email: "dev@signalzero.local", picture: "" };
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<UserProfile>(defaultUser);
   const [currentView, setCurrentView] = useState<'context' | 'chat' | 'dev' | 'store' | 'test' | 'project' | 'help'>('context');
   
   const [activeSystemPrompt, setActiveSystemPrompt] = useState<string>(ACTIVATION_PROMPT);
@@ -277,7 +199,11 @@ function App() {
 
   useEffect(() => {
       const stored = localStorage.getItem('signalzero_user');
-      if (stored) setUser(JSON.parse(stored));
+      if (stored) {
+          setUser(JSON.parse(stored));
+      } else {
+          localStorage.setItem('signalzero_user', JSON.stringify(defaultUser));
+      }
 
       const storedPrompt = localStorage.getItem('signalzero_active_prompt');
       if (storedPrompt) {
@@ -380,22 +306,11 @@ function App() {
   };
 
   const handleThemeToggle = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  
-  const handleGoogleLogin = (response: any) => {
-      try {
-          const payload = parseJwt(response.credential);
-          const profile: UserProfile = { name: payload.name || "User", email: payload.email, picture: payload.picture };
-          setUser(profile);
-          localStorage.setItem('signalzero_user', JSON.stringify(profile));
-      } catch (e) { console.error(e); }
-  };
-  const handleGuestLogin = () => {
-      const guest: UserProfile = { name: "Guest Developer", email: "dev@signalzero.local", picture: "" };
-      setUser(guest);
-      localStorage.setItem('signalzero_user', JSON.stringify(guest));
-  };
   const handleLogout = () => {
-      setUser(null); localStorage.removeItem('signalzero_user'); handleClearChat(); setCurrentView('context');
+      setUser(defaultUser);
+      localStorage.setItem('signalzero_user', JSON.stringify(defaultUser));
+      handleClearChat();
+      setCurrentView('context');
   };
 
   const handleSendMessage = async (text: string) => {
@@ -446,7 +361,7 @@ function App() {
   const handleNewProject = async (skipConfirm: boolean = false) => {
       if (!skipConfirm && !confirm("Start a new project?")) return;
       handleClearChat();
-      setProjectMeta({ name: 'New Project', author: user?.name || 'User', version: '1.0.0', created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+      setProjectMeta({ name: 'New Project', author: user.name || 'User', version: '1.0.0', created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
       await domainService.clearAll();
       await testService.clearTests();
       await setSystemPrompt(ACTIVATION_PROMPT);
@@ -474,8 +389,6 @@ function App() {
     return <ServerConnectScreen onConnect={() => setIsServerConnected(true)} />;
   }
 
-  if (!user) return <LoginScreen onGoogleLogin={handleGoogleLogin} onGuestLogin={handleGuestLogin} />;
-
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100">
         <div className="flex-1 flex flex-col min-w-0">
@@ -493,7 +406,18 @@ function App() {
                 <HelpScreen headerProps={getHeaderProps('Docs')} />
             ) : (
                 <div className="flex flex-col h-full relative">
-                    <Header {...getHeaderProps('Kernel', <MessageSquare size={18} className="text-indigo-500" />)} subtitle="Recursive Symbolic Interface" />
+                    <Header
+                        {...getHeaderProps('Kernel', <MessageSquare size={18} className="text-indigo-500" />)}
+                        subtitle="Recursive Symbolic Interface"
+                    >
+                        <button
+                            onClick={handleClearChat}
+                            className="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex items-center gap-2 text-xs font-mono uppercase"
+                            title="Reset chat context"
+                        >
+                            <Trash size={16} />
+                        </button>
+                    </Header>
                     <div className="flex-1 overflow-y-auto px-4 py-6 scroll-smooth">
                         <div className="max-w-full mx-auto space-y-6 pb-4">
                             {messages.map((msg) => (
