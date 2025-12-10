@@ -154,6 +154,22 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
       setIsEditModalOpen(false);
   };
 
+  const handleDeleteDomain = async (id: string) => {
+      const confirmed = window.confirm(`Delete domain "${id}"? This action cannot be undone.`);
+      if (!confirmed) return;
+      setLoading(true);
+      setError(null);
+      try {
+          await domainService.deleteDomain(id);
+          await loadData();
+      } catch (e: any) {
+          console.error("SymbolStoreScreen: Error deleting domain:", e);
+          setError(e.message || "Failed to delete domain.");
+      } finally {
+          setLoading(false);
+      }
+  };
+
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950 font-sans">
       <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
@@ -193,6 +209,13 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="min-w-0"><h3 className="font-bold font-mono text-gray-900 dark:text-gray-100 truncate max-w-[150px]">{item.name}</h3><div className="text-[10px] text-gray-400 font-mono mt-0.5 truncate max-w-[150px]">{item.id}</div></div>
                                     <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                            onClick={() => handleDeleteDomain(item.id)}
+                                            className="p-2 text-red-400 hover:text-red-600 transition-colors"
+                                            title="Delete domain"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
                                         <button
                                             onClick={() => handleEditClick(item)}
                                             className="p-2 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 transition-colors"
