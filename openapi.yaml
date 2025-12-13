@@ -274,13 +274,23 @@ paths:
       parameters:
         - name: q
           in: query
-          required: true
           schema:
             type: string
+          description: "Semantic search string. At least one of q, time_gte, or time_between is required. When q is omitted, only time-bucketed results are returned."
         - name: limit
           in: query
           schema:
             type: integer
+        - name: time_gte
+          in: query
+          schema:
+            type: string
+          description: "Earliest timestamp (milliseconds since epoch, base64 encoded) to include in UTC day buckets."
+        - name: time_between
+          in: query
+          schema:
+            type: string
+          description: "Comma-separated start and end timestamps (milliseconds since epoch, base64 encoded) to bound UTC day buckets."
       responses:
         '200':
           description: Successful response
@@ -290,6 +300,15 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/VectorSearchResult'
+        '400':
+          description: Missing query and time filter
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
   /symbols/refactor:
     post:
       summary: Refactor symbols
@@ -515,6 +534,8 @@ paths:
               properties:
                 testSetId:
                   type: string
+                name:
+                  type: string
                 prompt:
                   type: string
                 expectedActivations:
@@ -523,6 +544,7 @@ paths:
                     type: string
               required:
                 - testSetId
+                - name
                 - prompt
                 - expectedActivations
       responses:
@@ -722,6 +744,125 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/TraceData'
+  /loops:
+    get:
+      summary: List all configured loops
+      responses:
+        '200':
+          description: Scheduled loop definitions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  loops:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LoopDefinition'
+  /loops/{id}:
+    get:
+      summary: Get a loop definition
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Loop definition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoopDefinition'
+        '404':
+          description: Loop not found
+    put:
+      summary: Create or update a loop
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                schedule:
+                  type: string
+                  description: Cron-style schedule for the loop
+                prompt:
+                  type: string
+                  description: Prompt appended to the active system prompt for loop execution
+                enabled:
+                  type: boolean
+              required: [schedule, prompt, enabled]
+      responses:
+        '200':
+          description: Upserted loop definition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoopDefinition'
+        '400':
+          description: Invalid schedule or request body
+    delete:
+      summary: Delete a loop
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deletion result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: deleted or not_found
+  /loops/logs:
+    get:
+      summary: List loop execution logs
+      parameters:
+        - name: loopId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter logs to a specific loop
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Maximum number of logs to return (default 20)
+        - name: includeTraces
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Include symbolic traces captured for each execution
+      responses:
+        '200':
+          description: Loop execution logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LoopExecutionWithTraces'
 components:
   schemas:
     HealthStatus:
@@ -799,6 +940,12 @@ components:
       properties:
         id:
           type: string
+        created_at:
+          type: string
+          description: Milliseconds since epoch encoded as base64.
+        updated_at:
+          type: string
+          description: Milliseconds since epoch encoded as base64.
         entry_node:
           type: string
         activated_by:
@@ -813,6 +960,64 @@ components:
           type: string
         status:
           type: string
+    LoopDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+        schedule:
+          type: string
+        prompt:
+          type: string
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        lastRunAt:
+          type: string
+          format: date-time
+          nullable: true
+    LoopExecutionLog:
+      type: object
+      properties:
+        id:
+          type: string
+        loopId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [running, completed, failed]
+        traceCount:
+          type: integer
+        logFilePath:
+          type: string
+          nullable: true
+        responsePreview:
+          type: string
+          nullable: true
+        error:
+          type: string
+          nullable: true
+    LoopExecutionWithTraces:
+      allOf:
+        - $ref: '#/components/schemas/LoopExecutionLog'
+        - type: object
+          properties:
+            traces:
+              type: array
+              items:
+                $ref: '#/components/schemas/TraceData'
     SymbolFacet:
       type: object
       properties:
@@ -897,6 +1102,12 @@ components:
           type: string
         kind:
           $ref: '#/components/schemas/SymbolKind'
+        created_at:
+          type: string
+          description: Milliseconds since epoch encoded as base64.
+        updated_at:
+          type: string
+          description: Milliseconds since epoch encoded as base64.
         triad:
           type: string
         role:
@@ -963,6 +1174,8 @@ components:
       properties:
         id:
           type: string
+        name:
+          type: string
         prompt:
           type: string
         status:
@@ -1003,6 +1216,8 @@ components:
       properties:
         id:
           type: string
+        name:
+          type: string
         prompt:
           type: string
         expectedActivations:
@@ -1010,6 +1225,7 @@ components:
           items:
             type: string
       required:
+        - name
         - prompt
         - expectedActivations
     TestSet:
@@ -1031,6 +1247,8 @@ components:
         updatedAt:
           type: string
           format: date-time
+      required:
+        - name
     TestRun:
       type: object
       properties:
