@@ -204,37 +204,54 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {items.map((item) => (
-                        <div key={item.id} className={`relative p-5 rounded-lg border transition-all flex flex-col justify-between group ${item.enabled ? 'bg-white dark:bg-gray-900 border-emerald-500/30 shadow-sm' : 'bg-gray-100 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 opacity-75'}`}>
-                            <div>
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="min-w-0"><h3 className="font-bold font-mono text-gray-900 dark:text-gray-100 truncate max-w-[150px]">{item.name}</h3><div className="text-[10px] text-gray-400 font-mono mt-0.5 truncate max-w-[150px]">{item.id}</div></div>
-                                    <div className="flex items-center gap-1 shrink-0">
-                                        <button
-                                            onClick={() => handleDeleteDomain(item.id)}
-                                            className="p-2 text-red-400 hover:text-red-600 transition-colors"
-                                            title="Delete domain"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleEditClick(item)}
-                                            className="p-2 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 transition-colors"
-                                            title="Edit domain metadata"
-                                        >
-                                            <Settings size={16} />
-                                        </button>
-                                        <button onClick={() => handleToggle(item.id, item.enabled)} className={`transition-colors p-1 ${item.enabled ? 'text-emerald-500 hover:text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>{item.enabled ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}</button>
-                                    </div>
+                        <div key={item.id} className={`relative p-5 rounded-lg border transition-all flex flex-col gap-4 group ${item.enabled ? 'bg-white dark:bg-gray-900 border-emerald-500/30 shadow-sm' : 'bg-gray-100 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 opacity-75'}`}>
+                            <div className="flex justify-between items-start">
+                                <div className="min-w-0">
+                                    <h3 className="font-bold font-mono text-gray-900 dark:text-gray-100 truncate max-w-[150px]">{item.name}</h3>
+                                    <div className="text-[10px] text-gray-400 font-mono mt-0.5 truncate max-w-[150px]">{item.id}</div>
                                 </div>
-                                <div className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed min-h-[48px] max-h-[48px] overflow-hidden">
-                                    {item.description || 'No description provided.'}
-                                </div>
-                                <div className="flex items-center gap-4 text-xs font-mono text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-3">
-                                    <div><span className="block text-[10px] text-gray-400 uppercase">Symbols</span><span className="font-bold text-lg">{item.count}</span></div>
-                                    <div><span className="block text-[10px] text-gray-400 uppercase">Invariants</span><span className="font-bold text-lg">{item.invariants?.length ?? 0}</span></div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                        onClick={() => handleDeleteDomain(item.id)}
+                                        className="p-2 text-red-400 hover:text-red-600 transition-colors"
+                                        title="Delete domain"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleEditClick(item)}
+                                        className="p-2 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 transition-colors"
+                                        title="Edit domain metadata"
+                                    >
+                                        <Settings size={16} />
+                                    </button>
+                                    <button onClick={() => handleToggle(item.id, item.enabled)} className={`transition-colors p-1 ${item.enabled ? 'text-emerald-500 hover:text-emerald-600' : 'text-gray-400 hover:text-gray-600'}`}>{item.enabled ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}</button>
                                 </div>
                             </div>
-                            <button onClick={() => onNavigateToForge(item.id)} className="mt-4 w-full py-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-xs font-mono font-bold flex items-center justify-center gap-2 transition-colors opacity-0 group-hover:opacity-100"><Edit3 size={12} /> Open in Forge</button>
+
+                            <div className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed min-h-[48px] max-h-[48px] overflow-hidden">
+                                {item.description || 'No description provided.'}
+                            </div>
+
+                            <div className="flex items-center justify-between gap-3 border-t border-gray-100 dark:border-gray-800 pt-3">
+                                <div className="flex items-center gap-4 text-xs font-mono text-gray-600 dark:text-gray-400">
+                                    <div>
+                                        <span className="block text-[10px] text-gray-400 uppercase">Symbols</span>
+                                        <span className="font-bold text-lg">{item.count}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-[10px] text-gray-400 uppercase">Invariants</span>
+                                        <span className="font-bold text-lg">{item.invariants?.length ?? 0}</span>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => onNavigateToForge(item.id)}
+                                    className="shrink-0 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-[11px] font-mono font-bold flex items-center gap-2 transition-colors"
+                                >
+                                    <Edit3 size={12} />
+                                    Open
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
