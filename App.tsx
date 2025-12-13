@@ -18,6 +18,7 @@ import { ProjectScreen } from './components/screens/ProjectScreen';
 import { ContextScreen } from './components/screens/ContextScreen';
 import { HelpScreen } from './components/screens/HelpScreen';
 import { ServerConnectScreen } from './components/screens/ServerConnectScreen';
+import { LoopsScreen } from './components/screens/LoopsScreen';
 
 import { sendMessage, resetChatSession, setSystemPrompt, getSystemPrompt } from './services/gemini';
 import { domainService } from './services/domainService';
@@ -101,7 +102,7 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [user, setUser] = useState<UserProfile>(defaultUser);
-  const [currentView, setCurrentView] = useState<'context' | 'chat' | 'dev' | 'store' | 'test' | 'project' | 'help'>('context');
+  const [currentView, setCurrentView] = useState<'context' | 'chat' | 'dev' | 'store' | 'test' | 'project' | 'help' | 'loops'>('context');
   
   const [activeSystemPrompt, setActiveSystemPrompt] = useState<string>(ACTIVATION_PROMPT);
   const [projectMeta, setProjectMeta] = useState<ProjectMeta>({
@@ -404,6 +405,8 @@ function App() {
                 <TestRunnerScreen headerProps={getHeaderProps('Tests')} />
             ) : currentView === 'help' ? (
                 <HelpScreen headerProps={getHeaderProps('Docs')} />
+            ) : currentView === 'loops' ? (
+                <LoopsScreen headerProps={getHeaderProps('Loops')} />
             ) : (
                 <div className="flex flex-col h-full relative">
                     <Header

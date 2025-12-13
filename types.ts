@@ -60,6 +60,34 @@ export interface TraceData {
   status: string;
 }
 
+export interface LoopDefinition {
+    id: string;
+    schedule: string;
+    prompt: string;
+    enabled: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+    lastRunAt?: string | null;
+}
+
+export type LoopExecutionStatus = 'running' | 'completed' | 'failed';
+
+export interface LoopExecutionLog {
+    id: string;
+    loopId: string;
+    startedAt: string;
+    finishedAt?: string | null;
+    status: LoopExecutionStatus;
+    traceCount?: number;
+    logFilePath?: string | null;
+    responsePreview?: string | null;
+    error?: string | null;
+}
+
+export interface LoopExecutionWithTraces extends LoopExecutionLog {
+    traces?: TraceData[];
+}
+
 // Shared Symbol Definitions
 export interface SymbolFacet {
   function: string;

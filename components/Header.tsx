@@ -2,7 +2,7 @@
 import React from 'react';
 import {
   FolderOpen, Database, Hammer, FlaskConical, MessageSquare,
-  Network, Settings, HelpCircle, ShieldCheck
+  Network, Settings, HelpCircle, ShieldCheck, RefreshCcw
 } from 'lucide-react';
 
 export interface HeaderProps {
@@ -88,6 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
             <NavButton view="store" icon={Database} label="Symbol Store" />
             <NavButton view="dev" icon={Hammer} label="Symbol Forge" />
             <NavButton view="test" icon={FlaskConical} label="Test Runner" />
+            <NavButton view="loops" icon={RefreshCcw} label="Loops" />
             
             <div className="h-4 w-px bg-gray-300 dark:bg-gray-700 mx-2"></div>
 
