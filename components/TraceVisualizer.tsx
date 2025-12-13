@@ -1,6 +1,7 @@
 import React from 'react';
 import { Cpu, Layers, ArrowRight, GitCommit } from 'lucide-react';
 import { TraceData } from '../types';
+import { formatTimestamp } from './utils/formatTimestamp';
 
 interface TraceVisualizerProps {
   trace: TraceData;
@@ -23,11 +24,19 @@ export const TraceVisualizer: React.FC<TraceVisualizerProps> = ({ trace, onSymbo
             </div>
             <div className="grid grid-cols-1 gap-2 text-xs font-mono text-gray-600 dark:text-gray-300">
                 <div className="flex gap-2">
-                    <span className="text-gray-400 w-24">ID:</span> 
+                    <span className="text-gray-400 w-24">ID:</span>
                     <span className="select-all">{trace.id}</span>
                 </div>
                 <div className="flex gap-2">
-                    <span className="text-gray-400 w-24">Domain:</span> 
+                    <span className="text-gray-400 w-24">Created:</span>
+                    <span>{formatTimestamp(trace.created_at)}</span>
+                </div>
+                <div className="flex gap-2">
+                    <span className="text-gray-400 w-24">Updated:</span>
+                    <span>{formatTimestamp(trace.updated_at)}</span>
+                </div>
+                <div className="flex gap-2">
+                    <span className="text-gray-400 w-24">Domain:</span>
                     <span>{trace.source_context.symbol_domain}</span>
                 </div>
                 <div className="flex gap-2">

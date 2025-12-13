@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Loader2, Database, Shield, Activity, GitBranch, Globe, Sparkles, AlertTriangle, Hammer, Layout, User, Box, ArrowRight } from 'lucide-react';
 import { domainService } from '../../services/domainService';
 import { SymbolDef } from '../../types';
+import { formatTimestamp } from '../utils/formatTimestamp';
 
 interface SymbolDetailPanelProps {
   symbolId: string | null;
@@ -427,6 +428,8 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                             ) : "N/A"}
                         </div>
                         <div>TAG: {data.symbol_tag || "N/A"}</div>
+                        <div>CREATED_AT: {formatTimestamp(data.created_at)}</div>
+                        <div>UPDATED_AT: {formatTimestamp(data.updated_at)}</div>
                         <div>RAW_ID: {data.id}</div>
                     </div>
 
