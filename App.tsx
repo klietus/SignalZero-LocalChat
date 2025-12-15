@@ -125,6 +125,23 @@ function App() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const speakResponse = useCallback((text: string) => {
+      if (typeof window === 'undefined') return;
+      const synthesis = window.speechSynthesis;
+      if (!synthesis || !text) return;
+
+      synthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      synthesis.speak(utterance);
+  }, []);
+
+  const stopSpeechPlayback = useCallback(() => {
+      if (typeof window === 'undefined') return;
+      if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+      }
+  }, []);
+
   const trimChatHistory = useCallback((items: Message[]) => {
       return items.length > MAX_CHAT_TURNS ? items.slice(-MAX_CHAT_TURNS) : items;
   }, []);
@@ -304,6 +321,7 @@ function App() {
     setTraceLog([]);
     localStorage.removeItem(CHAT_HISTORY_KEY);
     resetChatSession();
+    stopSpeechPlayback();
   };
 
   const handleThemeToggle = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -336,6 +354,7 @@ function App() {
             timestamp: new Date(),
             toolCalls: toolCallsUI
         }]));
+        speakResponse(response.text);
     } catch (error) {
         setMessages(prev => trimChatHistory([...prev, {
             id: Date.now().toString(),
