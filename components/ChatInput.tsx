@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { SendHorizontal, Loader2, Mic, Square } from 'lucide-react';
 
 interface ChatInputProps {
-  onSend: (message: string) => void;
+  onSend: (message: string, options?: { viaVoice?: boolean }) => void;
   disabled?: boolean;
 }
 
@@ -14,6 +14,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const recognitionRef = useRef<any>(null);
   const silenceTimeoutRef = useRef<number | null>(null);
   const shouldSubmitRef = useRef(false);
+  const submitFromVoiceRef = useRef(false);
   const textRef = useRef('');
 
   const SpeechRecognitionConstructor = useMemo(() => {
@@ -46,11 +47,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
     }
   }, [disabled]);
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = (fromVoice: boolean = false, e?: React.FormEvent) => {
     e?.preventDefault();
     if (textRef.current.trim() && !disabled) {
-      onSend(textRef.current.trim());
+      onSend(textRef.current.trim(), { viaVoice: fromVoice });
       setText('');
+      submitFromVoiceRef.current = false;
       // Reset height and keep focus
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
@@ -68,10 +70,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
 
   const handleAutoSubmit = () => {
     shouldSubmitRef.current = true;
+    submitFromVoiceRef.current = true;
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     } else {
-      handleSubmit();
+      handleSubmit(true);
     }
   };
 
@@ -104,13 +107,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
       clearSilenceTimer();
       recognitionRef.current = null;
       if (shouldSubmitRef.current && textRef.current.trim()) {
-        handleSubmit();
+        handleSubmit(submitFromVoiceRef.current);
       }
       shouldSubmitRef.current = false;
+      submitFromVoiceRef.current = false;
     };
 
     recognitionRef.current = recognition;
     shouldSubmitRef.current = false;
+    submitFromVoiceRef.current = false;
     setIsListening(true);
     setText('');
     recognition.start();
@@ -120,6 +125,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const stopListening = (submit: boolean) => {
     if (!recognitionRef.current) return;
     shouldSubmitRef.current = submit;
+    submitFromVoiceRef.current = submit;
     clearSilenceTimer();
     recognitionRef.current.stop();
   };
@@ -146,7 +152,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   return (
     <div className="w-full bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 p-4 sticky bottom-0 z-10 transition-colors duration-300">
       <div className="max-w-full mx-auto relative px-4">
-        <form onSubmit={handleSubmit} className="relative flex items-end gap-2">
+        <form onSubmit={(e) => handleSubmit(false, e)} className="relative flex items-end gap-2">
           <textarea
             ref={textareaRef}
             value={text}
