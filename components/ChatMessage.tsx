@@ -142,7 +142,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
         console.warn("[ChatMessage] Partial or invalid trace detected during render parsing:", e);
       }
       return ''; // Remove trace block from text
-    }).trim();
+    });
 
     if (extractedTraces.length > 0) {
         console.log(`[ChatMessage] Extracted ${extractedTraces.length} traces from message ${message.id}`);
@@ -166,7 +166,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(contentWithoutTraces || message.content);
+      const textToCopy = contentWithoutTraces || message.content;
+      await navigator.clipboard.writeText(textToCopy);
       setCopyLabel('Copied');
       setTimeout(() => setCopyLabel('Copy'), 1500);
     } catch (err) {
@@ -257,11 +258,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
       markdownContent = decodeUnicode(markdownContent);
 
       return (
-        <div key={i} className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-gray-950 prose-pre:border prose-pre:border-gray-800">
+        <div key={i} className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-gray-950 prose-pre:border prose-pre:border-gray-800 prose-p:my-4">
            <ReactMarkdown
              remarkPlugins={[remarkGfm]}
              // CRITICAL: Allow sz: protocol which might otherwise be sanitized by default
-             urlTransform={(url: string) => url} 
+             urlTransform={(url: string) => url}
              components={{
                 a: ({href, children, ...props}: any) => {
                     // Check if this is a SignalZero symbol link
@@ -284,12 +285,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
                         </code>
                     );
                 },
-                p: ({children}: any) => <p className="mb-2 last:mb-0 inline-block">{children}</p>
+                p: ({children}: any) => (
+                    <p className="block whitespace-pre-wrap my-4 last:mb-0 leading-relaxed">{children}</p>
+                )
              }}
            >
              {markdownContent}
            </ReactMarkdown>
-        </div>
+       </div>
       );
     });
   };
