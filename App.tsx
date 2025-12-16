@@ -332,7 +332,7 @@ function App() {
       setCurrentView('context');
   };
 
-  const handleSendMessage = async (text: string) => {
+  const handleSendMessage = async (text: string, options?: { viaVoice?: boolean }) => {
     const newMessage: Message = { id: Date.now().toString(), role: Sender.USER, content: text, timestamp: new Date() };
     setMessages(prev => trimChatHistory([...prev, newMessage]));
     setIsProcessing(true);
@@ -354,7 +354,9 @@ function App() {
             timestamp: new Date(),
             toolCalls: toolCallsUI
         }]));
-        speakResponse(response.text);
+        if (options?.viaVoice) {
+            speakResponse(response.text);
+        }
     } catch (error) {
         setMessages(prev => trimChatHistory([...prev, {
             id: Date.now().toString(),
