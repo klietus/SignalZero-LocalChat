@@ -1,44 +1,128 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Key, Save, Moon, Sun, LogOut, Shield, Database, Server } from 'lucide-react';
+import { X, Save, LogOut, Shield, Database, Server, Network, Lock } from 'lucide-react';
 import { UserProfile } from '../types';
 import { getApiUrl, setApiUrl } from '../services/config';
+import { settingsService } from '../services/settingsService';
 
 interface SettingsDialogProps {
   isOpen: boolean;
   onClose: () => void;
   user: UserProfile | null;
   onLogout: () => void;
-  theme: 'light' | 'dark';
-  onThemeToggle: () => void;
 }
 
-export const SettingsDialog: React.FC<SettingsDialogProps> = ({ 
-    isOpen, 
+export const SettingsDialog: React.FC<SettingsDialogProps> = ({
+    isOpen,
     onClose,
     user,
-    onLogout,
-    theme,
-    onThemeToggle
+    onLogout
 }) => {
-  const [apiKey, setApiKey] = useState('');
   const [serverUrl, setServerUrl] = useState('');
+  const [redisHost, setRedisHost] = useState('');
+  const [redisPort, setRedisPort] = useState('');
+  const [redisPassword, setRedisPassword] = useState('');
+  const [chromaHost, setChromaHost] = useState('');
+  const [chromaPort, setChromaPort] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const parseHostPort = (value: string) => {
+    if (!value) return { host: '', port: '' };
+
+    try {
+        const withProtocol = value.match(/^https?:\/\//) ? value : `http://${value}`;
+        const url = new URL(withProtocol);
+        return {
+            host: url.hostname,
+            port: url.port || ''
+        };
+    } catch (e) {
+        return { host: value, port: '' };
+    }
+  };
+
+  const buildUrlFromParts = (host: string, port?: string) => {
+    if (!host) return '';
+
+    try {
+        const withProtocol = host.match(/^https?:\/\//) ? host : `http://${host}`;
+        const url = new URL(withProtocol);
+        url.port = port || '';
+        return url.toString().replace(/\/$/, '');
+    } catch (e) {
+        return port ? `${host}:${port}` : host;
+    }
+  };
+
+  const hydrateSettings = (settings: Awaited<ReturnType<typeof settingsService.get>>) => {
+    const redis = settings.redis || {};
+    const chroma = settings.chroma || {};
+
+    setRedisHost(redis.server || redis.redisServer || '');
+    setRedisPort(
+        redis.port?.toString() ||
+        redis.redisPort?.toString() ||
+        ''
+    );
+    setRedisPassword(redis.password || redis.redisPassword || redis.redisToken || '');
+
+    const chromaUrl = chroma.url || chroma.chromaUrl || '';
+    const { host, port } = parseHostPort(chromaUrl);
+    setChromaHost(host || chromaUrl);
+    setChromaPort(port);
+  };
 
   useEffect(() => {
     if (isOpen) {
-      const storedKey = localStorage.getItem('signalzero_api_key');
-      if (storedKey) setApiKey(storedKey);
       setServerUrl(getApiUrl());
+
+      const loadSettings = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const settings = await settingsService.get();
+            hydrateSettings(settings);
+        } catch (err) {
+            console.error('Failed to load settings', err);
+            setError('Failed to load settings from the server.');
+        } finally {
+            setIsLoading(false);
+        }
+      };
+
+      loadSettings();
     }
   }, [isOpen]);
 
-  const handleSave = () => {
-    localStorage.setItem('signalzero_api_key', apiKey);
-    setApiUrl(serverUrl);
-    
-    // Slight delay to allow UI to update or simply reload if drastic
-    // Since API URL is pulled from localStorage on each request, this is instant for next calls.
-    onClose();
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError(null);
+
+    try {
+        setApiUrl(serverUrl);
+
+        const redisPortNumber = redisPort ? parseInt(redisPort, 10) : undefined;
+        const chromaUrl = buildUrlFromParts(chromaHost, chromaPort);
+
+        const updated = await settingsService.update({
+            redis: {
+                server: redisHost || undefined,
+                port: redisPortNumber,
+                password: redisPassword || undefined
+            },
+            chroma: chromaUrl ? { url: chromaUrl } : undefined
+        });
+
+        hydrateSettings(updated);
+        onClose();
+    } catch (err) {
+        console.error('Failed to save settings', err);
+        setError('Failed to save settings. Please verify your values and try again.');
+    } finally {
+        setIsSaving(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -59,7 +143,19 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
         </div>
         
         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-            
+
+            {error && (
+                <div className="p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs font-mono">
+                    {error}
+                </div>
+            )}
+
+            {isLoading && (
+                <div className="p-3 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs font-mono">
+                    Loading current settings...
+                </div>
+            )}
+
             {/* User Profile Section */}
             {user && (
                 <div className="space-y-3 pb-6 border-b border-gray-100 dark:border-gray-800">
@@ -91,24 +187,6 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </div>
             )}
 
-            {/* Interface Section */}
-            <div className="space-y-3 pb-6 border-b border-gray-100 dark:border-gray-800">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono">Interface</label>
-                <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Theme Preference</span>
-                    <button
-                        onClick={onThemeToggle}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-xs font-mono font-bold text-gray-700 dark:text-gray-300"
-                    >
-                        {theme === 'light' ? (
-                            <><Moon size={14} /> Dark Mode</>
-                        ) : (
-                            <><Sun size={14} /> Light Mode</>
-                        )}
-                    </button>
-                </div>
-            </div>
-
             {/* Server Configuration */}
              <div className="space-y-2 pb-6 border-b border-gray-100 dark:border-gray-800">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono flex items-center gap-2">
@@ -126,48 +204,94 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </p>
             </div>
 
-            {/* API Key Section */}
+            {/* Redis Configuration */}
             <div className="space-y-2 pb-6 border-b border-gray-100 dark:border-gray-800">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono flex items-center gap-2">
-                    <Key size={14} /> SignalZero API Key
+                    <Database size={14} /> Redis
                 </label>
-                <input 
-                    type="password" 
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="sz_sk_..."
-                    className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                        <span className="text-[11px] font-mono text-gray-500 uppercase">Host</span>
+                        <input
+                            type="text"
+                            value={redisHost}
+                            onChange={(e) => setRedisHost(e.target.value)}
+                            placeholder="localhost"
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <span className="text-[11px] font-mono text-gray-500 uppercase">Port</span>
+                        <input
+                            type="number"
+                            value={redisPort}
+                            onChange={(e) => setRedisPort(e.target.value)}
+                            placeholder="6379"
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                        />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <span className="text-[11px] font-mono text-gray-500 uppercase flex items-center gap-2"><Lock size={12} /> Password / Token</span>
+                    <input
+                        type="password"
+                        value={redisPassword}
+                        onChange={(e) => setRedisPassword(e.target.value)}
+                        placeholder="Optional"
+                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                    />
+                </div>
                 <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
-                    Required for write operations (save_symbol). Read operations are public.<br/>
-                    Key is stored locally in your browser.
+                    Values are persisted on the Kernel via the Settings API.
                 </p>
             </div>
 
-            {/* Vector DB Section */}
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono flex items-center gap-2">
-                        <Database size={14} /> Vector Store
-                    </label>
+            {/* Chroma Configuration */}
+            <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono flex items-center gap-2">
+                    <Network size={14} /> Chroma
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                        <span className="text-[11px] font-mono text-gray-500 uppercase">Host</span>
+                        <input
+                            type="text"
+                            value={chromaHost}
+                            onChange={(e) => setChromaHost(e.target.value)}
+                            placeholder="localhost"
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <span className="text-[11px] font-mono text-gray-500 uppercase">Port</span>
+                        <input
+                            type="number"
+                            value={chromaPort}
+                            onChange={(e) => setChromaPort(e.target.value)}
+                            placeholder="8000"
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                        />
+                    </div>
                 </div>
-                
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-800">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                        Vector operations are handled by the remote Kernel API.
-                    </p>
-                </div>
+                <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
+                    Used for vector store operations when configured for external Chroma.
+                </p>
             </div>
 
         </div>
 
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-950/50 border-t border-gray-100 dark:border-gray-800 flex justify-end">
-            <button 
+            <button
                 onClick={handleSave}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm font-mono"
+                disabled={isSaving || isLoading}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm font-mono text-white ${
+                    isSaving || isLoading
+                        ? 'bg-emerald-400 cursor-not-allowed'
+                        : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
             >
                 <Save size={16} />
-                Save Configuration
+                {isSaving ? 'Saving...' : 'Save Configuration'}
             </button>
         </div>
       </div>
