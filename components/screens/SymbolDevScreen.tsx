@@ -20,6 +20,7 @@ const DEFAULT_PATTERN: SymbolDef = {
     triad: '⟐⇌⟐',
     role: '',
     macro: '',
+    activation_conditions: [],
     symbol_domain: 'root',
     symbol_tag: 'draft',
     facets: {
@@ -45,8 +46,10 @@ const DEFAULT_LATTICE: SymbolDef = {
     lattice: {
         topology: 'inductive',
         closure: 'loop',
-        members: []
+        members: [],
+        activation_conditions: []
     },
+    activation_conditions: [],
     symbol_domain: 'root',
     symbol_tag: 'draft',
     facets: { // Minimal facets for lattice
@@ -69,6 +72,7 @@ const DEFAULT_PERSONA: SymbolDef = {
     triad: '⟐⟐⟐',
     role: 'Persona Agent',
     macro: '',
+    activation_conditions: [],
     symbol_domain: 'root',
     symbol_tag: 'persona',
     facets: {
@@ -142,6 +146,7 @@ const sanitizeForEditor = (raw: any): SymbolDef => {
     copy.triad = copy.triad || '';
     copy.role = copy.role || '';
     copy.macro = copy.macro || '';
+    copy.activation_conditions = copy.activation_conditions || [];
     copy.symbol_tag = copy.symbol_tag || '';
     copy.failure_mode = copy.failure_mode || '';
     copy.kind = copy.kind || 'pattern';
@@ -166,6 +171,7 @@ const sanitizeForEditor = (raw: any): SymbolDef => {
         copy.lattice.topology = copy.lattice.topology || 'inductive';
         copy.lattice.closure = copy.lattice.closure || 'loop';
         copy.lattice.members = copy.lattice.members || [];
+        copy.lattice.activation_conditions = copy.lattice.activation_conditions || [];
     }
 
     // Persona Specific
@@ -778,7 +784,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
     };
 
     const handleLinesArrayChange = (
-        parent: 'persona',
+        parent: 'root' | 'lattice' | 'persona',
         field: string,
         value: string
     ) => {
@@ -786,6 +792,10 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
         const array = value.split('\n').map(s => s.trim()).filter(s => s);
         if (parent === 'persona') {
             handlePersonaChange(field, array);
+        } else if (parent === 'lattice') {
+            handleLatticeChange(field, array);
+        } else {
+            handleChange(field as keyof SymbolDef, array);
         }
     };
 
@@ -1183,6 +1193,35 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                             className={INPUT_STYLE}
                                         />
                                     </div>
+                                </div>
+                            </section>
+
+                            {/* Activation Conditions (Common) */}
+                            <section className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 font-mono border-b border-gray-100 dark:border-gray-800 pb-2 mb-4">
+                                    Activation Conditions
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1">
+                                        <Label>Symbol Activation</Label>
+                                        <AutoResizeTextarea
+                                            value={safeJoin(currentSymbol.activation_conditions, '\n')}
+                                            onChange={(e: any) => handleLinesArrayChange('root', 'activation_conditions', e.target.value)}
+                                            placeholder="One condition per line..."
+                                            className={INPUT_STYLE}
+                                        />
+                                    </div>
+                                    {currentSymbol.kind === 'lattice' && (
+                                        <div className="space-y-1">
+                                            <Label>Lattice-Specific Activation</Label>
+                                            <AutoResizeTextarea
+                                                value={safeJoin(currentSymbol.lattice?.activation_conditions, '\n')}
+                                                onChange={(e: any) => handleLinesArrayChange('lattice', 'activation_conditions', e.target.value)}
+                                                placeholder="Lattice conditions (one per line)"
+                                                className={INPUT_STYLE}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </section>
 
