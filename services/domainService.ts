@@ -142,25 +142,38 @@ export const domainService = {
      const res = await apiFetch('/domains');
      if (!res.ok) return [];
      const domains = await res.json();
-     
-     // If server already provides count, use it. Otherwise hydrate.
-     if (domains.length > 0 && typeof domains[0].count === 'number') {
+
+     // If server already provides full counts, use them directly
+     const hasAllCounts = domains.length > 0 && domains.every((d: any) =>
+         typeof d.count === 'number' && typeof d.personaCount === 'number' && typeof d.latticeCount === 'number'
+     );
+
+     if (hasAllCounts) {
          return domains.map((d: any) => ({
              ...d,
              lastUpdated: d.lastUpdated || Date.now()
          }));
      }
 
-     // Fallback for servers that don't return count
+     // Fallback for servers that don't return counts (or only partial counts)
      const enhanced = await Promise.all(domains.map(async (d: any) => {
          const syms = await this.getSymbols(d.id);
+         const counts = syms.reduce((acc, sym) => {
+             const kind = sym.kind || 'pattern';
+             if (kind === 'persona') acc.personaCount += 1;
+             if (kind === 'lattice') acc.latticeCount += 1;
+             return acc;
+         }, { personaCount: 0, latticeCount: 0 });
+
          return {
              ...d,
-             count: syms.length,
-             lastUpdated: Date.now()
+             count: typeof d.count === 'number' ? d.count : syms.length,
+             personaCount: typeof d.personaCount === 'number' ? d.personaCount : counts.personaCount,
+             latticeCount: typeof d.latticeCount === 'number' ? d.latticeCount : counts.latticeCount,
+             lastUpdated: d.lastUpdated || Date.now()
          };
      }));
-     
+
      return enhanced;
   }
 };

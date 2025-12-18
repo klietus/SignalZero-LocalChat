@@ -234,10 +234,18 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
                             </div>
 
                             <div className="flex items-center justify-between gap-3 border-t border-gray-100 dark:border-gray-800 pt-3">
-                                <div className="flex items-center gap-4 text-xs font-mono text-gray-600 dark:text-gray-400">
+                                <div className="grid grid-cols-2 gap-4 text-xs font-mono text-gray-600 dark:text-gray-400">
                                     <div>
                                         <span className="block text-[10px] text-gray-400 uppercase">Symbols</span>
                                         <span className="font-bold text-lg">{item.count}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-[10px] text-gray-400 uppercase">Personas</span>
+                                        <span className="font-bold text-lg">{item.personaCount ?? 0}</span>
+                                    </div>
+                                    <div>
+                                        <span className="block text-[10px] text-gray-400 uppercase">Lattices</span>
+                                        <span className="font-bold text-lg">{item.latticeCount ?? 0}</span>
                                     </div>
                                     <div>
                                         <span className="block text-[10px] text-gray-400 uppercase">Invariants</span>
