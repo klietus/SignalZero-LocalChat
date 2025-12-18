@@ -141,6 +141,7 @@ export interface SymbolLatticeDef {
     topology: LatticeTopology;
     closure: LatticeClosure;
     members: string[]; // List of Symbol IDs in execution order
+    activation_conditions?: string[];
 }
 
 export interface SymbolPersonaDef {
@@ -162,6 +163,7 @@ export interface SymbolDef {
   macro: string; // Used for patterns
   lattice?: SymbolLatticeDef; // Used for lattices
   persona?: SymbolPersonaDef; // Used for personas
+  activation_conditions?: string[];
   symbol_domain: string;
   symbol_tag: string;
   facets: SymbolFacet;

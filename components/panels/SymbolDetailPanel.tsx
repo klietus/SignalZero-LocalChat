@@ -202,6 +202,17 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                         </p>
                     </div>
 
+                    {data.activation_conditions && data.activation_conditions.length > 0 && (
+                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-800 space-y-2">
+                            <div className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Activation Conditions</div>
+                            <ul className="list-disc pl-4 space-y-1 text-xs text-gray-700 dark:text-gray-300">
+                                {data.activation_conditions.map((cond, i) => (
+                                    <li key={i}>{safeRenderItem(cond)}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
                     {/* LATTICE SPECIFIC DATA */}
                     {data.kind === 'lattice' && data.lattice && (
                          <div className="bg-purple-50 dark:bg-purple-900/10 rounded-lg p-4 border border-purple-100 dark:border-purple-800/30 space-y-4">
@@ -240,6 +251,17 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                                                 </li>
                                             );
                                         })}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {data.lattice.activation_conditions && data.lattice.activation_conditions.length > 0 && (
+                                <div className="space-y-1">
+                                    <span className="text-[10px] text-gray-500 uppercase font-mono">Activation Conditions</span>
+                                    <ul className="text-xs text-gray-700 dark:text-gray-300 list-disc pl-4 space-y-1">
+                                        {data.lattice.activation_conditions.map((cond, i) => (
+                                            <li key={i}>{safeRenderItem(cond)}</li>
+                                        ))}
                                     </ul>
                                 </div>
                             )}
