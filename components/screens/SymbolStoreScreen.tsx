@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ToggleLeft, ToggleRight, CloudDownload, Plus, Edit3, Loader2, ArrowRight, Download, Upload, Trash2, Settings, X, Shield, Tag, FileText, AlertTriangle, Database } from 'lucide-react';
+import { ToggleLeft, ToggleRight, CloudDownload, Plus, Edit3, Loader2, ArrowRight, Download, Upload, Trash2, Settings, X, Shield, Tag, FileText, AlertTriangle } from 'lucide-react';
 import { domainService } from '../../services/domainService';
 import { SymbolDef } from '../../types';
 import { Header, HeaderProps } from '../Header';
@@ -181,11 +181,6 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
       </Header>
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-4xl mx-auto space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 p-4 rounded-lg flex items-start gap-3">
-                <Database size={20} className="text-blue-500 mt-0.5 shrink-0" />
-                <div className="text-sm text-blue-800 dark:text-blue-200"><strong className="block mb-1 font-mono uppercase text-xs">API Connected</strong>Domains are fetched from the SignalZero Kernel API.</div>
-            </div>
-            
             {loading && items.length === 0 && (
                 <div className="col-span-full text-center py-12 text-gray-400 font-mono text-sm flex flex-col items-center gap-2">
                     <Loader2 className="animate-spin" size={24} />
