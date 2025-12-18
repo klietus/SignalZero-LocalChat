@@ -111,10 +111,10 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
                         <div>
                             <h3 className="font-mono font-bold text-sm text-gray-900 dark:text-gray-100">save_symbol</h3>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Commits a new or updated symbol to the registry. 
+                                Commits a new or updated symbol to the registry.
                             </p>
                             <p className="text-[10px] text-red-500 mt-1 font-mono">
-                                * Requires API Key (configured in Settings)
+                                * Requires authenticated access on the Kernel
                             </p>
                         </div>
                     </div>

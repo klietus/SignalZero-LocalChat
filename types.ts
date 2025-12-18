@@ -28,6 +28,37 @@ export interface AppState {
   theme: 'light' | 'dark';
 }
 
+export interface RedisSettings {
+  server?: string;
+  port?: number;
+  password?: string;
+  redisUrl?: string;
+  redisToken?: string;
+  redisServer?: string;
+  redisPort?: number;
+  redisPassword?: string;
+}
+
+export interface ChromaSettings {
+  url?: string;
+  collection?: string;
+  useExternal?: boolean;
+  chromaUrl?: string;
+  collectionName?: string;
+}
+
+export interface SystemSettings {
+  redis?: RedisSettings;
+  chroma?: ChromaSettings;
+  geminiKey?: string;
+}
+
+export interface SystemSettingsUpdate {
+  redis?: Partial<RedisSettings>;
+  chroma?: Partial<ChromaSettings>;
+  geminiKey?: string;
+}
+
 export interface ToolConfig {
   declarations: FunctionDeclaration[];
   executor: (name: string, args: any) => Promise<any>;

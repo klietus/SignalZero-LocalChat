@@ -100,7 +100,6 @@ function App() {
   const defaultUser: UserProfile = { name: "Guest Developer", email: "dev@signalzero.local", picture: "" };
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [user, setUser] = useState<UserProfile>(defaultUser);
   const [currentView, setCurrentView] = useState<'context' | 'chat' | 'dev' | 'store' | 'test' | 'project' | 'help' | 'loops'>('context');
   
@@ -176,15 +175,14 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (theme === 'dark') {
       document.documentElement.classList.add('dark');
       document.body.classList.add('bg-gray-950');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('bg-gray-950');
-      document.body.classList.add('bg-gray-50');
-    }
-  }, [theme]);
+
+      return () => {
+          document.documentElement.classList.remove('dark');
+          document.body.classList.remove('bg-gray-950');
+      };
+  }, []);
 
   // Check connection on startup
   useEffect(() => {
@@ -324,7 +322,6 @@ function App() {
     stopSpeechPlayback();
   };
 
-  const handleThemeToggle = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
   const handleLogout = () => {
       setUser(defaultUser);
       localStorage.setItem('signalzero_user', JSON.stringify(defaultUser));
@@ -457,7 +454,7 @@ function App() {
                 </div>
             )}
         </div>
-        <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} user={user} onLogout={handleLogout} theme={theme} onThemeToggle={handleThemeToggle} />
+        <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} user={user} onLogout={handleLogout} />
         <ImportStatusModal stats={importStats} onClose={() => { setImportStats(null); setCurrentView('project'); }} />
     </div>
   );
