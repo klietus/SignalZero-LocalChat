@@ -258,7 +258,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
       markdownContent = decodeUnicode(markdownContent);
 
       return (
-        <div key={i} className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-gray-950 prose-pre:border prose-pre:border-gray-800 prose-p:my-4">
+        <div key={i} className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-gray-950 prose-pre:border prose-pre:border-gray-800">
            <ReactMarkdown
              remarkPlugins={[remarkGfm]}
              // CRITICAL: Allow sz: protocol which might otherwise be sanitized by default
