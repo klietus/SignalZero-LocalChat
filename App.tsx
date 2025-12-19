@@ -418,7 +418,7 @@ function App() {
             ) : currentView === 'dev' ? (
                 <SymbolDevScreen headerProps={getHeaderProps('Forge')} onBack={() => { setDevInitialSymbol(null); setCurrentView('chat'); }} initialDomain={devInitialDomain} initialSymbol={devInitialSymbol} />
             ) : currentView === 'store' ? (
-                <SymbolStoreScreen headerProps={getHeaderProps('Store')} onBack={() => setCurrentView('chat')} onNavigateToForge={(dom) => { setDevInitialDomain(dom); setCurrentView('dev'); }} />
+                <SymbolStoreScreen headerProps={getHeaderProps('Store')} onBack={() => setCurrentView('chat')} onNavigateToForge={(dom) => { setDevInitialSymbol(null); setDevInitialDomain(dom); setCurrentView('dev'); }} />
             ) : currentView === 'test' ? (
                 <TestRunnerScreen headerProps={getHeaderProps('Tests')} />
             ) : currentView === 'help' ? (
