@@ -79,6 +79,7 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
           symbol_tag: "system",
           facets: {} as any,
           failure_mode: "",
+          activation_conditions: [],
           linked_patterns: [],
           macro: ""
       });

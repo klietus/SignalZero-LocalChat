@@ -39,6 +39,7 @@ const sampleSymbol: SymbolDef = {
   symbol_tag: 'tag',
   facets: {} as any,
   failure_mode: '',
+  activation_conditions: [],
   linked_patterns: [],
   kind: 'pattern'
 };
