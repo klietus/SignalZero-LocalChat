@@ -254,17 +254,6 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                                     </ul>
                                 </div>
                             )}
-
-                            {data.lattice.activation_conditions && data.lattice.activation_conditions.length > 0 && (
-                                <div className="space-y-1">
-                                    <span className="text-[10px] text-gray-500 uppercase font-mono">Activation Conditions</span>
-                                    <ul className="text-xs text-gray-700 dark:text-gray-300 list-disc pl-4 space-y-1">
-                                        {data.lattice.activation_conditions.map((cond, i) => (
-                                            <li key={i}>{safeRenderItem(cond)}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
                          </div>
                     )}
 
@@ -285,17 +274,6 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                                     <div className="text-sm text-amber-800 dark:text-amber-300">{data.persona.function}</div>
                                 </div>
                             </div>
-
-                            {data.persona.activation_conditions && (
-                                <div className="space-y-1">
-                                    <span className="text-[10px] text-gray-500 uppercase font-mono">Activation Conditions</span>
-                                    <ul className="text-xs text-gray-700 dark:text-gray-300 list-disc pl-4 space-y-1">
-                                        {data.persona.activation_conditions.map((cond, i) => (
-                                            <li key={i}>{safeRenderItem(cond)}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
 
                             {data.persona.fallback_behavior && (
                                 <div className="space-y-1">

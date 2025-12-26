@@ -46,8 +46,7 @@ const DEFAULT_LATTICE: SymbolDef = {
     lattice: {
         topology: 'inductive',
         closure: 'loop',
-        members: [],
-        activation_conditions: []
+        members: []
     },
     activation_conditions: [],
     symbol_domain: 'root',
@@ -87,7 +86,6 @@ const DEFAULT_PERSONA: SymbolDef = {
     persona: {
         recursion_level: 'root',
         function: '',
-        activation_conditions: [],
         fallback_behavior: [],
         linked_personas: []
     },
@@ -141,12 +139,33 @@ const safeJoin = (arr: any, sep: string) => {
 const sanitizeForEditor = (raw: any): SymbolDef => {
     const copy = JSON.parse(JSON.stringify(raw));
     
+    // Normalize activation conditions to the SymbolDef level (new schema)
+    const mergedActivationConditions = [
+        ...(Array.isArray(copy.activation_conditions) ? copy.activation_conditions : []),
+        ...(Array.isArray(copy.lattice?.activation_conditions) ? copy.lattice.activation_conditions : []),
+        ...(Array.isArray(copy.persona?.activation_conditions) ? copy.persona.activation_conditions : []),
+    ]
+        .map((item: any) => typeof item === 'object' ? (item.id || JSON.stringify(item)) : String(item))
+        .map((item: string) => item.trim())
+        .filter((item: string) => item.length > 0);
+
+    copy.activation_conditions = Array.from(new Set(mergedActivationConditions));
+
+    // Remove deprecated nested activation conditions to avoid stale writes
+    if (copy.lattice && 'activation_conditions' in copy.lattice) {
+        const { activation_conditions, ...rest } = copy.lattice;
+        copy.lattice = rest;
+    }
+    if (copy.persona && 'activation_conditions' in copy.persona) {
+        const { activation_conditions, ...rest } = copy.persona;
+        copy.persona = rest;
+    }
+
     // Top Level Strings - Ensure empty string if missing
     copy.name = copy.name || '';
     copy.triad = copy.triad || '';
     copy.role = copy.role || '';
     copy.macro = copy.macro || '';
-    copy.activation_conditions = copy.activation_conditions || [];
     copy.symbol_tag = copy.symbol_tag || '';
     copy.failure_mode = copy.failure_mode || '';
     copy.kind = copy.kind || 'pattern';
@@ -171,7 +190,6 @@ const sanitizeForEditor = (raw: any): SymbolDef => {
         copy.lattice.topology = copy.lattice.topology || 'inductive';
         copy.lattice.closure = copy.lattice.closure || 'loop';
         copy.lattice.members = copy.lattice.members || [];
-        copy.lattice.activation_conditions = copy.lattice.activation_conditions || [];
     }
 
     // Persona Specific
@@ -179,7 +197,6 @@ const sanitizeForEditor = (raw: any): SymbolDef => {
         if (!copy.persona) copy.persona = {};
         copy.persona.recursion_level = copy.persona.recursion_level || 'root';
         copy.persona.function = copy.persona.function || '';
-        copy.persona.activation_conditions = copy.persona.activation_conditions || [];
         copy.persona.fallback_behavior = copy.persona.fallback_behavior || [];
         copy.persona.linked_personas = copy.persona.linked_personas || [];
     }
@@ -1201,7 +1218,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 font-mono border-b border-gray-100 dark:border-gray-800 pb-2 mb-4">
                                     Activation Conditions
                                 </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 gap-6">
                                     <div className="space-y-1">
                                         <Label>Symbol Activation</Label>
                                         <AutoResizeTextarea
@@ -1211,17 +1228,6 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                             className={INPUT_STYLE}
                                         />
                                     </div>
-                                    {currentSymbol.kind === 'lattice' && (
-                                        <div className="space-y-1">
-                                            <Label>Lattice-Specific Activation</Label>
-                                            <AutoResizeTextarea
-                                                value={safeJoin(currentSymbol.lattice?.activation_conditions, '\n')}
-                                                onChange={(e: any) => handleLinesArrayChange('lattice', 'activation_conditions', e.target.value)}
-                                                placeholder="Lattice conditions (one per line)"
-                                                className={INPUT_STYLE}
-                                            />
-                                        </div>
-                                    )}
                                 </div>
                             </section>
 
@@ -1303,16 +1309,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="space-y-1">
-                                            <Label>Activation Conditions</Label>
-                                            <AutoResizeTextarea
-                                                value={safeJoin(currentSymbol.persona?.activation_conditions, '\n')}
-                                                onChange={(e: any) => handleLinesArrayChange('persona', 'activation_conditions', e.target.value)}
-                                                placeholder="One condition per line..."
-                                                className={INPUT_STYLE}
-                                            />
-                                        </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-1">
                                             <Label>Fallback Behavior</Label>
                                             <AutoResizeTextarea
@@ -1322,15 +1319,14 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                                 className={INPUT_STYLE}
                                             />
                                         </div>
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label>Linked Personas</Label>
-                                        <SymbolRelationshipField
-                                            items={currentSymbol.persona?.linked_personas}
-                                            onChange={(newItems) => handlePersonaChange('linked_personas', newItems)}
-                                            placeholder="No linked personas"
-                                        />
+                                        <div className="space-y-1">
+                                            <Label>Linked Personas</Label>
+                                            <SymbolRelationshipField
+                                                items={currentSymbol.persona?.linked_personas}
+                                                onChange={(newItems) => handlePersonaChange('linked_personas', newItems)}
+                                                placeholder="No linked personas"
+                                            />
+                                        </div>
                                     </div>
 
                                 </section>
