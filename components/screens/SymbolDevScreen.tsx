@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Plus, ChevronRight, Check, AlertTriangle, Loader2, Sparkles, MessageSquarePlus, Trash2, GitMerge, Layout, Box, ArrowRightLeft, X, User, UserCog, Repeat } from 'lucide-react';
+import { Save, Plus, ChevronRight, Check, AlertTriangle, Loader2, Trash2, GitMerge, Layout, Box, ArrowRightLeft, X, User, UserCog } from 'lucide-react';
 import { domainService } from '../../services/domainService';
 import { SymbolDef, SymbolFacet } from '../../types';
-import { generateSymbolSynthesis, generatePersonaConversion, generateLatticeConversion, generateRefactor } from '../../services/gemini';
+import { generatePersonaConversion, generateLatticeConversion } from '../../services/gemini';
 import { Header, HeaderProps } from '../Header';
 
 interface SymbolDevScreenProps {
@@ -295,11 +295,6 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
 
     const [isDirty, setIsDirty] = useState(false);
     const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-
-    // Synthesis State
-    const [synthesisInput, setSynthesisInput] = useState("");
-    const [isSynthesizing, setIsSynthesizing] = useState(false);
-    const [synthMode, setSynthMode] = useState<'create' | 'refactor'>('create');
 
     // Conversion State
     const [isConverting, setIsConverting] = useState(false);
@@ -623,119 +618,6 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
         }
     };
 
-    const handleSynthesis = async () => {
-        if (!synthesisInput.trim()) return;
-        setIsSynthesizing(true);
-
-        try {
-            if (synthMode === 'create') {
-                // --- CREATE MODE ---
-                if (isDirty) {
-                    if (!window.confirm("Synthesizing will replace current editor content with a new symbol. Discard unsaved changes?")) {
-                        setIsSynthesizing(false);
-                        return;
-                    }
-                }
-
-                // Pass current domain and list of existing symbols to give the AI context for linking
-                const resultText = await generateSymbolSynthesis(synthesisInput, selectedDomain, symbolList);
-
-                const match = resultText.match(/<sz_symbol>([\s\S]*?)<\/sz_symbol>/);
-                if (match && match[1]) {
-                    const cleanJson = match[1].replace(/```json\n?|```/g, '').trim();
-                    const parsed = JSON.parse(cleanJson);
-
-                    if (parsed.id) {
-                        let baseDefault = DEFAULT_PATTERN;
-                        if (parsed.kind === 'lattice') baseDefault = DEFAULT_LATTICE;
-                        if (parsed.kind === 'persona') baseDefault = DEFAULT_PERSONA;
-
-                        // Ensure base facets exist even if parsed ones are merged
-                        const baseFacets = JSON.parse(JSON.stringify(baseDefault.facets));
-
-                        // Merge synthesized props onto defaults, then sanitize
-                        const merged = {
-                            ...baseDefault,
-                            ...parsed,
-                            facets: { ...baseFacets, ...(parsed.facets || {}) },
-                            lattice: parsed.lattice ? { ...baseDefault.lattice, ...parsed.lattice } : baseDefault.lattice,
-                            persona: parsed.persona ? { ...baseDefault.persona, ...parsed.persona } : baseDefault.persona
-                        };
-
-                        const sanitized = sanitizeForEditor(merged);
-                        setCurrentSymbol(sanitized);
-
-                        setOriginalId(null);
-                        setIsDirty(true);
-                        setSynthesisInput("");
-                        setSaveMessage({ type: 'success', text: 'Synthesized New Symbol' });
-                    } else {
-                        throw new Error("Generated JSON missing ID");
-                    }
-                } else {
-                    throw new Error("Model response did not contain valid <sz_symbol> tags.");
-                }
-
-            } else {
-                // --- REFACTOR MODE ---
-                const response = await generateRefactor(synthesisInput, selectedDomain, symbolList);
-
-                // Extract tool calls manually since we are using generateContent directly
-                const calls = (response.toolCalls || []) as any[];
-
-                if (calls && calls.length > 0) {
-                    const call = calls.find(c => c && c.name === 'bulk_update_symbols');
-                    if (call && call.args && (call.args as any).updates) {
-                        const updates = (call.args as any).updates as any[];
-
-                        // --- LOGGING ---
-                        console.group("Refactor Operation Logs");
-                        console.log("Raw Payload:", updates);
-
-                        updates.forEach((u: any) => {
-                            const original = symbolList.find(s => s.id === u.old_id);
-                            // Ensure we enforce domain on the new symbol before logging
-                            const updatedSymbol = { ...u.symbol_data, symbol_domain: selectedDomain };
-
-                            console.groupCollapsed(`Update: ${u.old_id} -> ${updatedSymbol.id}`);
-                            console.log("BEFORE (Original):", original || "Symbol not found in current list");
-                            console.log("AFTER (New):", updatedSymbol);
-                            console.groupEnd();
-
-                            // Mutate the update object for the actual processing step below
-                            u.symbol_data = updatedSymbol;
-                        });
-                        console.groupEnd();
-                        // ---------------
-
-                        const results = await domainService.processRefactorOperation(updates);
-
-                        // Refresh List
-                        const updatedList = await domainService.getSymbols(selectedDomain);
-                        setSymbolList(updatedList);
-
-                        // If current symbol was modified, reload it or reset if deleted
-                        // Simple approach: reload if ID matches or was renamed
-                        // For now, let's just clear selection to be safe
-                        handleNewPattern();
-
-                        setSynthesisInput("");
-                        setSaveMessage({ type: 'success', text: `Refactored ${results.count} symbols (${results.renamedIds.length} renamed).` });
-                    } else {
-                        throw new Error("Model did not call the bulk update tool correctly.");
-                    }
-                } else {
-                    throw new Error("Model provided text instead of executing a refactor tool call.");
-                }
-            }
-        } catch (e) {
-            alert(`Operation failed: ${String(e)}`);
-            console.error(e);
-        } finally {
-            setIsSynthesizing(false);
-        }
-    };
-
     const handleChange = (field: keyof SymbolDef, value: any) => {
         setCurrentSymbol(prev => ({ ...prev, [field]: value }));
         setIsDirty(true);
@@ -891,48 +773,6 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                 {domains.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
                             <ChevronRight className="absolute right-2 top-3 text-gray-400 rotate-90" size={14} />
-                        </div>
-                    </div>
-
-                    {/* Synthesis Box */}
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-indigo-50/50 dark:bg-indigo-900/10">
-                        <div className="flex justify-between items-center mb-2">
-                            <label className="text-xs font-mono font-bold text-indigo-500 uppercase flex items-center gap-1">
-                                <Sparkles size={12} /> AI Forge
-                            </label>
-                            <div className="flex bg-gray-200 dark:bg-gray-800 rounded p-0.5">
-                                <button
-                                    onClick={() => setSynthMode('create')}
-                                    className={`px-2 py-0.5 text-[10px] font-bold rounded font-mono transition-colors ${synthMode === 'create' ? 'bg-white dark:bg-gray-700 text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                >
-                                    Create
-                                </button>
-                                <button
-                                    onClick={() => setSynthMode('refactor')}
-                                    className={`px-2 py-0.5 text-[10px] font-bold rounded font-mono transition-colors ${synthMode === 'refactor' ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                >
-                                    Refactor
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="relative">
-                            <AutoResizeTextarea
-                                value={synthesisInput}
-                                onChange={(e: any) => setSynthesisInput(e.target.value)}
-                                placeholder={synthMode === 'create' ? "Describe a new symbol to synthesize..." : "Describe how to refactor symbols in this domain..."}
-                                rows={3}
-                                className="w-full bg-white dark:bg-gray-950 border border-indigo-200 dark:border-indigo-800 rounded p-2 text-xs mb-2 focus:ring-1 focus:ring-indigo-500 outline-none"
-                                disabled={isSynthesizing}
-                            />
-                            <button
-                                onClick={handleSynthesis}
-                                disabled={isSynthesizing || !synthesisInput.trim()}
-                                className={`w-full text-white py-1.5 rounded text-xs font-bold font-mono transition-colors flex items-center justify-center gap-2 disabled:opacity-50 ${synthMode === 'create' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-purple-600 hover:bg-purple-700'}`}
-                            >
-                                {isSynthesizing ? <Loader2 size={12} className="animate-spin" /> : synthMode === 'create' ? <MessageSquarePlus size={12} /> : <Repeat size={12} />}
-                                {synthMode === 'create' ? "Synthesize New" : "Run Bulk Refactor"}
-                            </button>
                         </div>
                     </div>
 
