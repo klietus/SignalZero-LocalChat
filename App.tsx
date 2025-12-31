@@ -31,6 +31,8 @@ import { contextService } from './services/contextService';
 import { ACTIVATION_PROMPT } from './symbolic_system/activation_prompt';
 
 const CHAT_HISTORY_KEY = 'signalzero_chat_history';
+const ACTIVE_CONTEXT_STORAGE_KEY = 'signalzero_active_context';
+const ACTIVE_CONTEXT_META_STORAGE_KEY = 'signalzero_active_context_meta';
 const MAX_CHAT_TURNS = 50;
 // ... ImportStatusModal same as before ... 
 const ImportStatusModal: React.FC<{ stats: ProjectImportStats | null; onClose: () => void; }> = ({ stats, onClose }) => {
@@ -165,6 +167,20 @@ function App() {
       return raw;
   };
 
+  const persistActiveContext = useCallback((session: { id: string; status?: ContextStatus; type?: ContextType; metadata?: Record<string, any>; createdAt?: string; updatedAt?: string; closedAt?: string | null; }) => {
+      localStorage.setItem(ACTIVE_CONTEXT_STORAGE_KEY, session.id);
+      try {
+          localStorage.setItem(ACTIVE_CONTEXT_META_STORAGE_KEY, JSON.stringify(session));
+      } catch (e) {
+          console.warn('[Context] Failed to persist context metadata', e);
+      }
+  }, []);
+
+  const clearPersistedContext = useCallback(() => {
+      localStorage.removeItem(ACTIVE_CONTEXT_STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_CONTEXT_META_STORAGE_KEY);
+  }, []);
+
   const loadContextHistory = useCallback(async (contextId: string) => {
       setIsLoadingContextHistory(true);
       setContextError(null);
@@ -172,6 +188,7 @@ function App() {
           const { session, history } = await contextService.getHistory(contextId);
           setActiveContextId(session.id);
           setActiveContextStatus(session.status as ContextStatus);
+          persistActiveContext(session);
 
           const sortedHistory = [...(history || [])].sort((a, b) =>
               new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
@@ -206,7 +223,7 @@ function App() {
       } finally {
           setIsLoadingContextHistory(false);
       }
-  }, [trimChatHistory]);
+  }, [persistActiveContext, trimChatHistory]);
 
   const refreshContexts = useCallback(async (options: { keepSelection?: boolean } = {}) => {
       if (!isServerConnected) return;
@@ -219,21 +236,50 @@ function App() {
 
           const filtered = sorted.filter(ctx => contextTypeFilter === 'all' ? true : ctx.type === contextTypeFilter);
 
+          const storedContextMetaRaw = localStorage.getItem(ACTIVE_CONTEXT_META_STORAGE_KEY);
+          let storedContextId = localStorage.getItem(ACTIVE_CONTEXT_STORAGE_KEY);
+          if (storedContextMetaRaw) {
+              try {
+                  const parsed = JSON.parse(storedContextMetaRaw);
+                  if (parsed?.id) storedContextId = parsed.id;
+              } catch (e) {
+                  console.warn('[Context] Failed to parse stored context meta', e);
+              }
+          }
+
           let nextContextId: string | null = null;
+          let nextContextStatus: ContextStatus | null = null;
           if (options.keepSelection && activeContextId && filtered.some(c => c.id === activeContextId)) {
               nextContextId = activeContextId;
               const matching = sorted.find(c => c.id === activeContextId);
-              if (matching) setActiveContextStatus(matching.status as ContextStatus);
+              if (matching) {
+                  nextContextStatus = matching.status as ContextStatus;
+                  setActiveContextStatus(nextContextStatus);
+                  persistActiveContext(matching);
+              }
           } else {
-              nextContextId =
-                  filtered.find(c => c.type === 'conversation' && c.status === 'open')?.id ||
-                  filtered.find(c => c.type === 'conversation')?.id ||
-                  filtered[0]?.id ||
-                  null;
+              if (storedContextId && filtered.some(c => c.id === storedContextId)) {
+                  const stored = filtered.find(c => c.id === storedContextId)!;
+                  nextContextId = stored.id;
+                  nextContextStatus = stored.status as ContextStatus;
+              } else {
+                  const nextContext =
+                      filtered.find(c => c.type === 'conversation' && c.status === 'open') ||
+                      filtered.find(c => c.type === 'conversation') ||
+                      filtered[0];
+                  if (nextContext) {
+                      nextContextId = nextContext.id;
+                      nextContextStatus = nextContext.status as ContextStatus;
+                  }
+              }
           }
 
           if (nextContextId && nextContextId !== activeContextId) {
               await loadContextHistory(nextContextId);
+          } else if (nextContextId && nextContextStatus) {
+              setActiveContextStatus(nextContextStatus);
+              const matching = sorted.find(c => c.id === nextContextId);
+              if (matching) persistActiveContext(matching);
           }
       } catch (e: any) {
           console.error('[Context] Failed to load contexts', e);
@@ -241,7 +287,7 @@ function App() {
       } finally {
           setIsLoadingContexts(false);
       }
-  }, [activeContextId, contextTypeFilter, isServerConnected, loadContextHistory]);
+  }, [activeContextId, contextTypeFilter, isServerConnected, loadContextHistory, persistActiveContext]);
 
   const hydrateProjectContext = useCallback(async (
       options: { navigateOnMeta?: boolean; cancelRef?: { cancelled: boolean } } = {}
@@ -337,6 +383,22 @@ function App() {
       const storedPrompt = localStorage.getItem('signalzero_active_prompt');
       if (storedPrompt) {
           setActiveSystemPrompt(storedPrompt);
+      }
+
+      const storedActiveContextMeta = localStorage.getItem(ACTIVE_CONTEXT_META_STORAGE_KEY);
+      if (storedActiveContextMeta) {
+          try {
+              const parsed = JSON.parse(storedActiveContextMeta);
+              if (parsed?.id) {
+                  setActiveContextId(parsed.id);
+                  if (parsed.status) setActiveContextStatus(parsed.status as ContextStatus);
+              }
+          } catch (e) {
+              console.warn('[Context] Failed to hydrate active context', e);
+          }
+      } else {
+          const storedActiveContextId = localStorage.getItem(ACTIVE_CONTEXT_STORAGE_KEY);
+          if (storedActiveContextId) setActiveContextId(storedActiveContextId);
       }
 
       const storedChat = localStorage.getItem(CHAT_HISTORY_KEY);
@@ -435,6 +497,7 @@ function App() {
     stopSpeechPlayback();
     setActiveContextId(null);
     setActiveContextStatus(null);
+    clearPersistedContext();
     refreshContexts();
   };
 
@@ -451,7 +514,11 @@ function App() {
     setIsProcessing(true);
 
     try {
-        const response = await sendMessage(text, { newSession: activeContextStatus === 'closed' && !!activeContextId });
+        const shouldStartNewSession = activeContextStatus === 'closed' || !activeContextId;
+        const response = await sendMessage(text, {
+            newSession: shouldStartNewSession,
+            contextSessionId: shouldStartNewSession ? undefined : activeContextId ?? undefined
+        });
         
         // Convert API toolCalls to UI format
         const toolCallsUI = response.toolCalls?.map((tc: any, idx: number) => ({
@@ -470,6 +537,10 @@ function App() {
         if (response.contextSessionId) {
             setActiveContextId(response.contextSessionId);
             if (response.contextStatus) setActiveContextStatus(response.contextStatus as ContextStatus);
+            persistActiveContext({
+                id: response.contextSessionId,
+                status: response.contextStatus as ContextStatus
+            });
             refreshContexts({ keepSelection: true });
         }
         if (options?.viaVoice) {

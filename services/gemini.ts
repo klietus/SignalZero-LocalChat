@@ -25,13 +25,14 @@ export const setSystemPrompt = async (prompt: string) => {
 
 export const sendMessage = async (
     message: string,
-    options?: { newSession?: boolean }
+    options?: { newSession?: boolean; contextSessionId?: string }
 ): Promise<{ text: string, toolCalls?: any[]; contextSessionId?: string; contextStatus?: string }> => {
     const res = await apiFetch('/chat', {
         method: 'POST',
         body: JSON.stringify({
             message,
-            ...(options?.newSession ? { newSession: true } : {})
+            ...(options?.newSession ? { newSession: true } : {}),
+            ...(options?.contextSessionId ? { contextSessionId: options.contextSessionId } : {})
         })
     });
     
