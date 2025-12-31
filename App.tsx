@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageSquare, Database, Trash } from 'lucide-react';
-import { Message, Sender, UserProfile, TraceData, SymbolDef, ProjectMeta, ProjectImportStats } from './types';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { MessageSquare, Database, Trash, Loader2, RefreshCcw } from 'lucide-react';
+import { Message, Sender, UserProfile, TraceData, SymbolDef, ProjectMeta, ProjectImportStats, ContextSession, ContextStatus, ContextType } from './types';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { SettingsDialog } from './components/SettingsDialog';
@@ -26,6 +26,7 @@ import { projectService } from './services/projectService';
 import { testService } from './services/testService';
 import { isApiUrlConfigured, validateApiConnection } from './services/config';
 import { traceService } from './services/traceService';
+import { contextService } from './services/contextService';
 
 import { ACTIVATION_PROMPT } from './symbolic_system/activation_prompt';
 
@@ -118,6 +119,13 @@ function App() {
   const [traceLog, setTraceLog] = useState<TraceData[]>([]);
   const [isTracePanelOpen, setIsTracePanelOpen] = useState(false);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [contexts, setContexts] = useState<ContextSession[]>([]);
+  const [activeContextId, setActiveContextId] = useState<string | null>(null);
+  const [activeContextStatus, setActiveContextStatus] = useState<ContextStatus | null>(null);
+  const [contextTypeFilter, setContextTypeFilter] = useState<'all' | ContextType>('conversation');
+  const [isLoadingContexts, setIsLoadingContexts] = useState(false);
+  const [isLoadingContextHistory, setIsLoadingContextHistory] = useState(false);
+  const [contextError, setContextError] = useState<string | null>(null);
 
   // Server Connection State
   const [isServerConnected, setIsServerConnected] = useState(isApiUrlConfigured());
@@ -144,6 +152,96 @@ function App() {
   const trimChatHistory = useCallback((items: Message[]) => {
       return items.length > MAX_CHAT_TURNS ? items.slice(-MAX_CHAT_TURNS) : items;
   }, []);
+
+  const parseToolArgs = (raw: any) => {
+      if (raw === undefined || raw === null) return {};
+      if (typeof raw === 'string') {
+          try {
+              return JSON.parse(raw);
+          } catch (e) {
+              return { value: raw };
+          }
+      }
+      return raw;
+  };
+
+  const loadContextHistory = useCallback(async (contextId: string) => {
+      setIsLoadingContextHistory(true);
+      setContextError(null);
+      try {
+          const { session, history } = await contextService.getHistory(contextId);
+          setActiveContextId(session.id);
+          setActiveContextStatus(session.status as ContextStatus);
+
+          const sortedHistory = [...(history || [])].sort((a, b) =>
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+
+          const mappedMessages: Message[] = sortedHistory.map((item, idx) => {
+              const roleMap: Record<string, Sender> = {
+                  user: Sender.USER,
+                  model: Sender.MODEL,
+                  system: Sender.SYSTEM
+              };
+              const role = roleMap[item.role] || Sender.SYSTEM;
+              const toolCalls = item.toolCalls?.map((tc, tcIdx) => ({
+                  id: tc.id || `${item.timestamp}-${tcIdx}`,
+                  name: tc.name || 'tool',
+                  args: parseToolArgs(tc.arguments)
+              }));
+
+              return {
+                  id: `${item.timestamp}-${idx}`,
+                  role,
+                  content: item.content || '',
+                  timestamp: new Date(item.timestamp),
+                  toolCalls
+              };
+          });
+
+          setMessages(trimChatHistory(mappedMessages));
+      } catch (e: any) {
+          console.error('[Context] Failed to load history', e);
+          setContextError(e?.message || 'Failed to load context history');
+      } finally {
+          setIsLoadingContextHistory(false);
+      }
+  }, [trimChatHistory]);
+
+  const refreshContexts = useCallback(async (options: { keepSelection?: boolean } = {}) => {
+      if (!isServerConnected) return;
+      setIsLoadingContexts(true);
+      setContextError(null);
+      try {
+          const list = await contextService.list();
+          const sorted = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setContexts(sorted);
+
+          const filtered = sorted.filter(ctx => contextTypeFilter === 'all' ? true : ctx.type === contextTypeFilter);
+
+          let nextContextId: string | null = null;
+          if (options.keepSelection && activeContextId && filtered.some(c => c.id === activeContextId)) {
+              nextContextId = activeContextId;
+              const matching = sorted.find(c => c.id === activeContextId);
+              if (matching) setActiveContextStatus(matching.status as ContextStatus);
+          } else {
+              nextContextId =
+                  filtered.find(c => c.type === 'conversation' && c.status === 'open')?.id ||
+                  filtered.find(c => c.type === 'conversation')?.id ||
+                  filtered[0]?.id ||
+                  null;
+          }
+
+          if (nextContextId && nextContextId !== activeContextId) {
+              await loadContextHistory(nextContextId);
+          }
+      } catch (e: any) {
+          console.error('[Context] Failed to load contexts', e);
+          setContextError(e?.message || 'Failed to load contexts');
+      } finally {
+          setIsLoadingContexts(false);
+      }
+  }, [activeContextId, contextTypeFilter, isServerConnected, loadContextHistory]);
 
   const hydrateProjectContext = useCallback(async (
       options: { navigateOnMeta?: boolean; cancelRef?: { cancelled: boolean } } = {}
@@ -192,6 +290,21 @@ function App() {
           });
       }
   }, []);
+
+  useEffect(() => {
+      if (!isServerConnected) return;
+      refreshContexts();
+  }, [isServerConnected, refreshContexts]);
+
+  useEffect(() => {
+      if (!isServerConnected) return;
+      refreshContexts({ keepSelection: true });
+  }, [currentView, contextTypeFilter, isServerConnected, refreshContexts]);
+
+  const filteredContexts = useMemo(
+      () => contexts.filter(ctx => contextTypeFilter === 'all' ? true : ctx.type === contextTypeFilter),
+      [contexts, contextTypeFilter]
+  );
 
   useEffect(() => {
       if (!isServerConnected) return;
@@ -320,6 +433,9 @@ function App() {
     localStorage.removeItem(CHAT_HISTORY_KEY);
     resetChatSession();
     stopSpeechPlayback();
+    setActiveContextId(null);
+    setActiveContextStatus(null);
+    refreshContexts();
   };
 
   const handleLogout = () => {
@@ -335,13 +451,13 @@ function App() {
     setIsProcessing(true);
 
     try {
-        const response = await sendMessage(text);
+        const response = await sendMessage(text, { newSession: activeContextStatus === 'closed' && !!activeContextId });
         
         // Convert API toolCalls to UI format
         const toolCallsUI = response.toolCalls?.map((tc: any, idx: number) => ({
             id: `call_${idx}`,
             name: tc.name,
-            args: tc.args
+            args: parseToolArgs(tc.args ?? tc.arguments)
         }));
 
         setMessages(prev => trimChatHistory([...prev, {
@@ -351,6 +467,11 @@ function App() {
             timestamp: new Date(),
             toolCalls: toolCallsUI
         }]));
+        if (response.contextSessionId) {
+            setActiveContextId(response.contextSessionId);
+            if (response.contextStatus) setActiveContextStatus(response.contextStatus as ContextStatus);
+            refreshContexts({ keepSelection: true });
+        }
         if (options?.viaVoice) {
             speakResponse(response.text);
         }
@@ -375,6 +496,11 @@ function App() {
           setSelectedSymbolId(id);
           setSelectedSymbolContext(data);
       }
+  };
+
+  const handleContextSelect = (id: string) => {
+      if (!id) return;
+      loadContextHistory(id);
   };
 
   const handleNewProject = async (skipConfirm: boolean = false) => {
@@ -439,6 +565,68 @@ function App() {
                             <Trash size={16} />
                         </button>
                     </Header>
+                    <div className="px-4 pt-3 space-y-2">
+                        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm px-3 py-2 flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-2 text-xs font-mono text-gray-600 dark:text-gray-300">
+                                <span className="uppercase tracking-wide text-gray-500 dark:text-gray-400">Active Context</span>
+                                <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 font-semibold">
+                                    {activeContextId || 'None'}
+                                </span>
+                                {activeContextStatus && (
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${activeContextStatus === 'open' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800'}`}>
+                                        {activeContextStatus}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2 ml-auto flex-wrap">
+                                <label className="text-[11px] font-mono uppercase text-gray-500 dark:text-gray-400">Filter</label>
+                                <select
+                                    className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-sm font-mono text-gray-800 dark:text-gray-100"
+                                    value={contextTypeFilter}
+                                    onChange={(e) => setContextTypeFilter(e.target.value as 'all' | ContextType)}
+                                >
+                                    <option value="all">All</option>
+                                    <option value="conversation">Conversation</option>
+                                    <option value="loop">Loop</option>
+                                </select>
+                                <select
+                                    className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-sm font-mono text-gray-800 dark:text-gray-100 min-w-[200px]"
+                                    value={activeContextId || ''}
+                                    onChange={(e) => handleContextSelect(e.target.value)}
+                                >
+                                    <option value="" disabled>Select context</option>
+                                    {filteredContexts.length === 0 ? (
+                                        <option value="">No contexts available</option>
+                                    ) : (
+                                        filteredContexts.map((ctx) => (
+                                            <option key={ctx.id} value={ctx.id}>
+                                                {ctx.id} • {ctx.type} • {new Date(ctx.createdAt).toLocaleString()}
+                                            </option>
+                                        ))
+                                    )}
+                                </select>
+                                <button
+                                    onClick={() => refreshContexts({ keepSelection: true })}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 text-xs font-mono"
+                                    title="Refresh contexts"
+                                >
+                                    <RefreshCcw size={14} className={isLoadingContexts ? 'animate-spin' : ''} />
+                                    Sync
+                                </button>
+                            </div>
+                        </div>
+                        {contextError && (
+                            <div className="px-3 py-2 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-xs text-red-700 dark:text-red-300 font-mono">
+                                {contextError}
+                            </div>
+                        )}
+                        {(isLoadingContexts || isLoadingContextHistory) && (
+                            <div className="px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-xs text-blue-700 dark:text-blue-300 font-mono flex items-center gap-2">
+                                <Loader2 size={14} className="animate-spin" />
+                                Syncing contexts...
+                            </div>
+                        )}
+                    </div>
                     <div className="flex-1 overflow-y-auto px-4 py-6 scroll-smooth">
                         <div className="max-w-full mx-auto space-y-6 pb-4">
                             {messages.map((msg) => (

@@ -23,10 +23,16 @@ export const setSystemPrompt = async (prompt: string) => {
     });
 };
 
-export const sendMessage = async (message: string): Promise<{ text: string, toolCalls?: any[] }> => {
+export const sendMessage = async (
+    message: string,
+    options?: { newSession?: boolean }
+): Promise<{ text: string, toolCalls?: any[]; contextSessionId?: string; contextStatus?: string }> => {
     const res = await apiFetch('/chat', {
         method: 'POST',
-        body: JSON.stringify({ message })
+        body: JSON.stringify({
+            message,
+            ...(options?.newSession ? { newSession: true } : {})
+        })
     });
     
     if (!res.ok) {
@@ -36,7 +42,9 @@ export const sendMessage = async (message: string): Promise<{ text: string, tool
     const data = await res.json();
     return {
         text: data.content,
-        toolCalls: data.toolCalls
+        toolCalls: data.toolCalls,
+        contextSessionId: data.contextSessionId,
+        contextStatus: data.contextStatus
     };
 };
 

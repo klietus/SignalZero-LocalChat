@@ -47,16 +47,55 @@ export interface ChromaSettings {
   collectionName?: string;
 }
 
+export interface InferenceSettings {
+  endpoint?: string;
+  model?: string;
+}
+
+export interface InferenceSettingsUpdate {
+  endpoint?: string;
+  model?: string;
+}
+
 export interface SystemSettings {
   redis?: RedisSettings;
   chroma?: ChromaSettings;
+  inference?: InferenceSettings;
   geminiKey?: string;
 }
 
 export interface SystemSettingsUpdate {
   redis?: Partial<RedisSettings>;
   chroma?: Partial<ChromaSettings>;
+  inference?: InferenceSettingsUpdate;
   geminiKey?: string;
+}
+
+export type ContextType = 'conversation' | 'loop';
+export type ContextStatus = 'open' | 'closed';
+
+export interface ContextSession {
+  id: string;
+  type: ContextType;
+  status: ContextStatus;
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string | null;
+  metadata?: Record<string, any>;
+}
+
+export interface ContextMessage {
+  role: string;
+  content: string;
+  timestamp: string;
+  toolName?: string | null;
+  toolCallId?: string | null;
+  toolArgs?: Record<string, any> | null;
+  toolCalls?: {
+      id?: string;
+      name?: string;
+      arguments?: any;
+  }[];
 }
 
 export interface ToolConfig {

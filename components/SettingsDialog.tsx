@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, LogOut, Shield, Database, Server, Network, Lock } from 'lucide-react';
+import { X, Save, LogOut, Shield, Database, Server, Network, Lock, Cpu } from 'lucide-react';
 import { UserProfile } from '../types';
 import { getApiUrl, setApiUrl } from '../services/config';
 import { settingsService } from '../services/settingsService';
@@ -24,6 +24,8 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [redisPassword, setRedisPassword] = useState('');
   const [chromaHost, setChromaHost] = useState('');
   const [chromaPort, setChromaPort] = useState('');
+  const [inferenceEndpoint, setInferenceEndpoint] = useState('');
+  const [inferenceModel, setInferenceModel] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +61,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const hydrateSettings = (settings: Awaited<ReturnType<typeof settingsService.get>>) => {
     const redis = settings.redis || {};
     const chroma = settings.chroma || {};
+    const inference = settings.inference || {};
 
     setRedisHost(redis.server || redis.redisServer || '');
     setRedisPort(
@@ -72,6 +75,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     const { host, port } = parseHostPort(chromaUrl);
     setChromaHost(host || chromaUrl);
     setChromaPort(port);
+
+    setInferenceEndpoint(inference.endpoint || '');
+    setInferenceModel(inference.model || '');
   };
 
   useEffect(() => {
@@ -105,6 +111,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
         const redisPortNumber = redisPort ? parseInt(redisPort, 10) : undefined;
         const chromaUrl = buildUrlFromParts(chromaHost, chromaPort);
+        const inferencePayload = {
+            endpoint: inferenceEndpoint || undefined,
+            model: inferenceModel || undefined
+        };
 
         const updated = await settingsService.update({
             redis: {
@@ -112,7 +122,8 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 port: redisPortNumber,
                 password: redisPassword || undefined
             },
-            chroma: chromaUrl ? { url: chromaUrl } : undefined
+            chroma: chromaUrl ? { url: chromaUrl } : undefined,
+            inference: (inferencePayload.endpoint || inferencePayload.model) ? inferencePayload : undefined
         });
 
         hydrateSettings(updated);
@@ -275,6 +286,36 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </div>
                 <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
                     Used for vector store operations when configured for external Chroma.
+                </p>
+            </div>
+
+            {/* Inference Configuration */}
+            <div className="space-y-2 pt-6 border-t border-gray-100 dark:border-gray-800">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono flex items-center gap-2">
+                    <Cpu size={14} /> Inference
+                </label>
+                <div className="space-y-2">
+                    <span className="text-[11px] font-mono text-gray-500 uppercase">Endpoint</span>
+                    <input
+                        type="text"
+                        value={inferenceEndpoint}
+                        onChange={(e) => setInferenceEndpoint(e.target.value)}
+                        placeholder="http://localhost:1234/v1"
+                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <span className="text-[11px] font-mono text-gray-500 uppercase">Model</span>
+                    <input
+                        type="text"
+                        value={inferenceModel}
+                        onChange={(e) => setInferenceModel(e.target.value)}
+                        placeholder="lmstudio-community/Meta-Llama-3-70B-Instruct"
+                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                    />
+                </div>
+                <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
+                    Configure the OpenAI-compatible endpoint and model used for inference.
                 </p>
             </div>
 
