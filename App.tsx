@@ -31,8 +31,6 @@ import { contextService } from './services/contextService';
 import { ACTIVATION_PROMPT } from './symbolic_system/activation_prompt';
 
 const CHAT_HISTORY_KEY = 'signalzero_chat_history';
-const ACTIVE_CONTEXT_STORAGE_KEY = 'signalzero_active_context';
-const ACTIVE_CONTEXT_META_STORAGE_KEY = 'signalzero_active_context_meta';
 const MAX_CHAT_TURNS = 50;
 // ... ImportStatusModal same as before ... 
 const ImportStatusModal: React.FC<{ stats: ProjectImportStats | null; onClose: () => void; }> = ({ stats, onClose }) => {
@@ -168,17 +166,11 @@ function App() {
   };
 
   const persistActiveContext = useCallback((session: { id: string; status?: ContextStatus; type?: ContextType; metadata?: Record<string, any>; createdAt?: string; updatedAt?: string; closedAt?: string | null; }) => {
-      localStorage.setItem(ACTIVE_CONTEXT_STORAGE_KEY, session.id);
-      try {
-          localStorage.setItem(ACTIVE_CONTEXT_META_STORAGE_KEY, JSON.stringify(session));
-      } catch (e) {
-          console.warn('[Context] Failed to persist context metadata', e);
-      }
+      // Intentionally empty to prevent local storage persistence
   }, []);
 
   const clearPersistedContext = useCallback(() => {
-      localStorage.removeItem(ACTIVE_CONTEXT_STORAGE_KEY);
-      localStorage.removeItem(ACTIVE_CONTEXT_META_STORAGE_KEY);
+      // Intentionally empty to prevent local storage persistence
   }, []);
 
   const loadContextHistory = useCallback(async (contextId: string) => {
@@ -236,17 +228,6 @@ function App() {
 
           const filtered = sorted.filter(ctx => contextTypeFilter === 'all' ? true : ctx.type === contextTypeFilter);
 
-          const storedContextMetaRaw = localStorage.getItem(ACTIVE_CONTEXT_META_STORAGE_KEY);
-          let storedContextId = localStorage.getItem(ACTIVE_CONTEXT_STORAGE_KEY);
-          if (storedContextMetaRaw) {
-              try {
-                  const parsed = JSON.parse(storedContextMetaRaw);
-                  if (parsed?.id) storedContextId = parsed.id;
-              } catch (e) {
-                  console.warn('[Context] Failed to parse stored context meta', e);
-              }
-          }
-
           let nextContextId: string | null = null;
           let nextContextStatus: ContextStatus | null = null;
           if (options.keepSelection && activeContextId && filtered.some(c => c.id === activeContextId)) {
@@ -258,19 +239,13 @@ function App() {
                   persistActiveContext(matching);
               }
           } else {
-              if (storedContextId && filtered.some(c => c.id === storedContextId)) {
-                  const stored = filtered.find(c => c.id === storedContextId)!;
-                  nextContextId = stored.id;
-                  nextContextStatus = stored.status as ContextStatus;
-              } else {
-                  const nextContext =
-                      filtered.find(c => c.type === 'conversation' && c.status === 'open') ||
-                      filtered.find(c => c.type === 'conversation') ||
-                      filtered[0];
-                  if (nextContext) {
-                      nextContextId = nextContext.id;
-                      nextContextStatus = nextContext.status as ContextStatus;
-                  }
+              const nextContext =
+                  filtered.find(c => c.type === 'conversation' && c.status === 'open') ||
+                  filtered.find(c => c.type === 'conversation') ||
+                  filtered[0];
+              if (nextContext) {
+                  nextContextId = nextContext.id;
+                  nextContextStatus = nextContext.status as ContextStatus;
               }
           }
 
@@ -342,10 +317,7 @@ function App() {
       refreshContexts();
   }, [isServerConnected, refreshContexts]);
 
-  useEffect(() => {
-      if (!isServerConnected) return;
-      refreshContexts({ keepSelection: true });
-  }, [currentView, contextTypeFilter, isServerConnected, refreshContexts]);
+
 
   const filteredContexts = useMemo(
       () => contexts.filter(ctx => contextTypeFilter === 'all' ? true : ctx.type === contextTypeFilter),
@@ -383,22 +355,6 @@ function App() {
       const storedPrompt = localStorage.getItem('signalzero_active_prompt');
       if (storedPrompt) {
           setActiveSystemPrompt(storedPrompt);
-      }
-
-      const storedActiveContextMeta = localStorage.getItem(ACTIVE_CONTEXT_META_STORAGE_KEY);
-      if (storedActiveContextMeta) {
-          try {
-              const parsed = JSON.parse(storedActiveContextMeta);
-              if (parsed?.id) {
-                  setActiveContextId(parsed.id);
-                  if (parsed.status) setActiveContextStatus(parsed.status as ContextStatus);
-              }
-          } catch (e) {
-              console.warn('[Context] Failed to hydrate active context', e);
-          }
-      } else {
-          const storedActiveContextId = localStorage.getItem(ACTIVE_CONTEXT_STORAGE_KEY);
-          if (storedActiveContextId) setActiveContextId(storedActiveContextId);
       }
 
       const storedChat = localStorage.getItem(CHAT_HISTORY_KEY);
@@ -541,7 +497,6 @@ function App() {
                 id: response.contextSessionId,
                 status: response.contextStatus as ContextStatus
             });
-            refreshContexts({ keepSelection: true });
         }
         if (options?.viaVoice) {
             speakResponse(response.text);
