@@ -24,6 +24,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [redisPassword, setRedisPassword] = useState('');
   const [chromaHost, setChromaHost] = useState('');
   const [chromaPort, setChromaPort] = useState('');
+  const [chromaCollection, setChromaCollection] = useState('');
   const [inferenceEndpoint, setInferenceEndpoint] = useState('');
   const [inferenceModel, setInferenceModel] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -75,6 +76,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     const { host, port } = parseHostPort(chromaUrl);
     setChromaHost(host || chromaUrl);
     setChromaPort(port);
+    setChromaCollection(chroma.collection || chroma.collectionName || 'signalzero');
 
     setInferenceEndpoint(inference.endpoint || '');
     setInferenceModel(inference.model || '');
@@ -122,7 +124,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 port: redisPortNumber,
                 password: redisPassword || undefined
             },
-            chroma: chromaUrl ? { url: chromaUrl } : undefined,
+            chroma: { 
+                url: chromaUrl || undefined,
+                collection: chromaCollection || undefined
+            },
             inference: (inferencePayload.endpoint || inferencePayload.model) ? inferencePayload : undefined
         });
 
@@ -258,7 +263,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
             </div>
 
             {/* Chroma Configuration */}
-            <div className="space-y-2">
+            <div className="space-y-2 pb-6 border-b border-gray-100 dark:border-gray-800">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono flex items-center gap-2">
                     <Network size={14} /> Chroma
                 </label>
@@ -283,6 +288,16 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                             className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
                         />
                     </div>
+                </div>
+                <div className="space-y-2">
+                    <span className="text-[11px] font-mono text-gray-500 uppercase">Collection Name</span>
+                    <input
+                        type="text"
+                        value={chromaCollection}
+                        onChange={(e) => setChromaCollection(e.target.value)}
+                        placeholder="signalzero"
+                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                    />
                 </div>
                 <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
                     Used for vector store operations when configured for external Chroma.

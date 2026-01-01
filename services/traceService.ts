@@ -2,8 +2,9 @@ import { TraceData } from '../types';
 import { apiFetch } from './api';
 
 export const traceService = {
-  async list(): Promise<TraceData[]> {
-    const res = await apiFetch('/traces');
+  async list(since?: number): Promise<TraceData[]> {
+    const url = since ? `/traces?since=${since}` : '/traces';
+    const res = await apiFetch(url);
     if (!res.ok) {
       throw new Error(`Failed to fetch traces: ${res.status} ${res.statusText}`);
     }

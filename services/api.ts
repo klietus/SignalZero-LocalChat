@@ -19,7 +19,9 @@ export const apiFetch = async (path: string, options: ApiOptions = {}) => {
     const url = `${getApiUrl()}${normalizedPath}`;
     const method = options.method || 'GET';
     
-    if (!options.skipLog) {
+    const isHistoryPoll = normalizedPath.includes('/history');
+
+    if (!options.skipLog && !isHistoryPoll) {
         let logBody = options.body;
         if (typeof options.body === 'string') {
             try {
@@ -53,6 +55,8 @@ export const apiFetch = async (path: string, options: ApiOptions = {}) => {
                     if (text) body = JSON.parse(text);
                 } catch (e) { /* ignore */ }
 
+                const isEmptyHistory = isHistoryPoll && body?.history && Array.isArray(body.history) && body.history.length === 0;
+
                 if (!response.ok) {
                     logger.error('API_RESPONSE_ERROR', `${method} ${normalizedPath} - ${response.status}`, {
                         status: response.status,
@@ -61,7 +65,7 @@ export const apiFetch = async (path: string, options: ApiOptions = {}) => {
                         url,
                         body
                     });
-                } else {
+                } else if (!isEmptyHistory) {
                     logger.info('API_RESPONSE', `${method} ${normalizedPath} - ${response.status}`, {
                         status: response.status,
                         duration: `${duration}ms`,

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { User, Terminal, Network, ChevronDown, ChevronRight, Activity, Globe, Copy } from 'lucide-react';
+import { User, Terminal, Network, ChevronDown, ChevronRight, Activity, Globe, Copy, RotateCcw } from 'lucide-react';
 // @ts-ignore
 import ReactMarkdown from 'react-markdown';
 // @ts-ignore
@@ -13,6 +13,7 @@ interface ChatMessageProps {
   onSymbolClick?: (id: string, data?: any) => void;
   onDomainClick?: (domain: string) => void;
   onTraceClick?: (id: string) => void;
+  onRetry?: (text: string) => void;
 }
 
 // --- Helper for Unicode Decoding ---
@@ -122,7 +123,30 @@ const TraceAggregator: React.FC<{ traces: TraceData[], onTraceClick?: (id: strin
   );
 };
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick, onDomainClick, onTraceClick }) => {
+const ThinkingBlock: React.FC<{ content: string }> = ({ content }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  return (
+    <div className="my-4 rounded-lg border border-purple-200 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-900/10 overflow-hidden">
+        <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full flex items-center justify-between px-4 py-2 text-xs font-mono font-bold text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/20 transition-colors"
+        >
+            <div className="flex items-center gap-2">
+                <Activity size={14} />
+                <span>Thinking Process</span>
+            </div>
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+        {isExpanded && (
+            <div className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300 font-mono whitespace-pre-wrap border-t border-purple-200 dark:border-purple-900/50 bg-white/50 dark:bg-black/20">
+                {content}
+            </div>
+        )}
+    </div>
+  );
+};
+
+export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick, onDomainClick, onTraceClick, onRetry }) => {
   const isUser = message.role === Sender.USER;
   const isSystem = message.role === Sender.SYSTEM;
   const isAssistantResponse = message.role !== Sender.USER;
@@ -151,19 +175,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
     return { traces: extractedTraces, contentWithoutTraces: cleanContent };
   }, [message.content, message.id]);
 
-  // Aggregated view of tool calls for compact header display
-  const toolSummary = useMemo(() => {
-    if (!message.toolCalls || message.toolCalls.length === 0) return '';
-    const counts = message.toolCalls.reduce((acc: Record<string, number>, call) => {
-      const key = call.name.replace(/_/g, ' ');
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-    return Object.entries(counts)
-      .map(([name, count]) => `${name}${count > 1 ? ` ×${count}` : ''}`)
-      .join(' • ');
-  }, [message.toolCalls]);
-
   const handleCopy = async () => {
     try {
       const textToCopy = contentWithoutTraces || message.content;
@@ -176,10 +187,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
     }
   };
 
-  // Formatter to handle code blocks, <sz_symbol> blocks, <sz_domain> blocks, and Markdown text
+  // Formatter to handle code blocks, <sz_symbol> blocks, <sz_domain> blocks, <think> blocks, and Markdown text
   const formatText = (text: string) => {
-    // Split by Code Blocks OR Symbol Blocks OR Domain Blocks to isolate them from normal Markdown processing
-    const parts = text.split(/(`{3}[\s\S]*?`{3}|<sz_symbol>[\s\S]*?<\/sz_symbol>|<sz_domain>[\s\S]*?<\/sz_domain>)/g);
+    // Split by Code Blocks OR Symbol Blocks OR Domain Blocks OR Think Blocks
+    const parts = text.split(/(`{3}[\s\S]*?`{3}|<sz_symbol>[\s\S]*?<\/sz_symbol>|<sz_domain>[\s\S]*?<\/sz_domain>|<(?:seed:)?think>[\s\S]*?<\/(?:seed:)?think>)/g);
     
     return parts.map((part, i) => {
       // 1. Handle Code Blocks
@@ -192,7 +203,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
         );
       }
 
-      // 2. Handle <sz_symbol> Blocks (Full JSON Definition)
+      // 2. Handle <think> or <seed:think> Blocks
+      const thinkMatch = part.match(/^<(seed:)?think>([\s\S]*?)<\/(seed:)?think>$/);
+      if (thinkMatch) {
+          const content = thinkMatch[2].trim();
+          return <ThinkingBlock key={i} content={content} />;
+      }
+
+      // 3. Handle <sz_symbol> Blocks (Full JSON Definition)
       if (part.startsWith('<sz_symbol>') && part.endsWith('</sz_symbol>')) {
          const inner = part.replace(/<\/?sz_symbol>/g, '');
          const cleanInner = inner.replace(/```json\n?|```/g, '').trim();
@@ -318,73 +336,88 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
               : 'bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-800'
             }`}>
             
-            {/* Meta controls */}
-              {(!!toolSummary || traces.length > 0 || isAssistantResponse) && (
-              <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 mb-2 w-full">
-                {toolSummary && (
-                  <button
-                    onClick={() => setShowToolList(prev => !prev)}
-                    className="flex items-center gap-2 px-2 py-1 rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 text-left flex-1 min-w-0 hover:border-gray-300 dark:hover:border-gray-700"
-                  >
-                    <div className="flex items-center gap-1 min-w-0">
-                      <Terminal size={12} />
-                      <span className="font-semibold text-gray-700 dark:text-gray-200">Tool calls</span>
-                      <span className="truncate">{toolSummary}</span>
+            {/* Header / Meta Controls */}
+            {isAssistantResponse && (
+              <div className="flex items-center justify-between gap-4 mb-3 pb-2 border-b border-gray-100 dark:border-gray-800 w-full">
+                {/* Left: Tool Toggle */}
+                <div className="flex-1 min-w-0">
+                  {message.toolCalls && message.toolCalls.length > 0 && (
+                    <div 
+                        className="text-[10px] uppercase font-bold text-gray-400 flex items-center gap-1 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors select-none truncate" 
+                        onClick={() => setShowToolList(prev => !prev)}
+                    >
+                        <Terminal size={10} className="flex-shrink-0" />
+                        <span>{message.toolCalls.length} Tool Execution{message.toolCalls.length !== 1 ? 's' : ''}</span>
+                        {showToolList ? <ChevronDown size={10} className="flex-shrink-0" /> : <ChevronRight size={10} className="flex-shrink-0" />}
                     </div>
-                    <ChevronDown size={12} className={`transition-transform ${showToolList ? 'rotate-180' : ''}`} />
-                  </button>
-                )}
+                  )}
+                </div>
 
-                <div className="flex items-center gap-2">
+                {/* Right: Actions */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   {traces.length > 0 && (
                     <button
                       onClick={() => setShowTraceList(prev => !prev)}
-                      className="relative flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800 hover:border-amber-200 dark:hover:border-amber-700"
+                      className="relative flex items-center justify-center w-6 h-6 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800 hover:border-amber-200 dark:hover:border-amber-700 transition-colors"
                       title="View reasoning traces"
                     >
-                      <Network size={14} />
+                      <Network size={12} />
                       {traces.length > 1 && (
-                        <span className="absolute -top-1 -right-1 text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-amber-600 text-white shadow">
+                        <span className="absolute -top-1 -right-1 text-[8px] leading-none px-1.5 py-0.5 rounded-full bg-amber-600 text-white shadow">
                           {traces.length}
                         </span>
                       )}
                     </button>
                   )}
 
-                  {isAssistantResponse && (
-                    <button
-                      onClick={handleCopy}
-                      className="flex items-center gap-1 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
-                      title="Copy response"
-                    >
-                      <Copy size={12} />
-                      <span className="text-[11px] font-medium">{copyLabel}</span>
-                    </button>
+                  {!message.isStreaming && message.content && (
+                    <>
+                      <button
+                        onClick={() => onRetry && onRetry(message.content)}
+                        className="p-1 rounded-md text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                        title="Retry message"
+                      >
+                        <RotateCcw size={14} />
+                      </button>
+                      <button
+                        onClick={handleCopy}
+                        className={`p-1 rounded-md transition-colors ${copyLabel === 'Copied' ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                        title={copyLabel}
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Tool Indicators */}
-            {message.toolCalls && message.toolCalls.length > 0 && showToolList && (
+            {/* Expanded Tool List */}
+            {isAssistantResponse && showToolList && message.toolCalls && message.toolCalls.length > 0 && (
                <div className="mb-3 w-full border-b border-gray-100 dark:border-gray-800 pb-2">
                  <ToolIndicator toolCalls={message.toolCalls} isFinished={!message.isStreaming || message.content.length > 0} />
                </div>
             )}
 
-            {/* Aggregated Traces Header */}
+            {/* Trace Visualizer */}
             {showTraceList && (
               <TraceAggregator traces={traces} onTraceClick={onTraceClick} defaultExpanded />
             )}
 
-            {/* Message Content */}
-            <div className={`w-full break-words`}>
-              {formatText(contentWithoutTraces)}
-            </div>
-
-            {/* Streaming Cursor */}
-            {message.isStreaming && (
-              <span className="inline-block w-2 h-4 ml-1 align-middle bg-emerald-500 opacity-75 animate-pulse" />
+            {/* Message Content or Pulse */}
+            {isAssistantResponse && message.isStreaming && !message.content ? (
+                <div className="flex items-center gap-2 py-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse delay-75"></span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse delay-150"></span>
+                </div>
+            ) : (
+                <div className={`w-full break-words`}>
+                    {formatText(contentWithoutTraces)}
+                    {message.isStreaming && (
+                        <span className="inline-block w-2 h-4 ml-1 align-middle bg-emerald-500 opacity-75 animate-pulse" />
+                    )}
+                </div>
             )}
           </div>
           

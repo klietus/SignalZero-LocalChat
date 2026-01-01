@@ -3,10 +3,6 @@ import { apiFetch } from './api';
 
 // --- Chat Service ---
 
-export const resetChatSession = async () => {
-    await apiFetch('/chat/reset', { method: 'POST' });
-};
-
 export const getSystemPrompt = async (): Promise<string | null> => {
     const res = await apiFetch('/system/prompt', { method: 'GET' });
 
@@ -25,28 +21,22 @@ export const setSystemPrompt = async (prompt: string) => {
 
 export const sendMessage = async (
     message: string,
-    options?: { newSession?: boolean; contextSessionId?: string }
-): Promise<{ text: string, toolCalls?: any[]; contextSessionId?: string; contextStatus?: string }> => {
+    contextSessionId: string,
+    messageId?: string
+): Promise<void> => {
     const res = await apiFetch('/chat', {
         method: 'POST',
         body: JSON.stringify({
             message,
-            ...(options?.newSession ? { newSession: true } : {}),
-            ...(options?.contextSessionId ? { contextSessionId: options.contextSessionId } : {})
+            contextSessionId,
+            messageId
         })
     });
     
     if (!res.ok) {
         throw new Error(`API Error: ${res.statusText}`);
     }
-
-    const data = await res.json();
-    return {
-        text: data.content,
-        toolCalls: data.toolCalls,
-        contextSessionId: data.contextSessionId,
-        contextStatus: data.contextStatus
-    };
+    // Async endpoint returns 202, no body content to wait for
 };
 
 // --- Logic Generators ---

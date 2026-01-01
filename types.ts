@@ -22,6 +22,7 @@ export interface Message {
   timestamp: Date;
   isStreaming?: boolean;
   toolCalls?: ToolCallDetails[];
+  correlationId?: string;
 }
 
 export interface AppState {
@@ -85,6 +86,7 @@ export interface ContextSession {
 }
 
 export interface ContextMessage {
+  id: string;
   role: string;
   content: string;
   timestamp: string;
@@ -96,6 +98,15 @@ export interface ContextMessage {
       name?: string;
       arguments?: any;
   }[];
+  metadata?: Record<string, any>;
+  correlationId?: string;
+}
+
+export interface ContextHistoryGroup {
+    correlationId: string;
+    userMessage: ContextMessage;
+    assistantMessages: ContextMessage[];
+    status: 'processing' | 'complete';
 }
 
 export interface ToolConfig {
