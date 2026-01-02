@@ -14,7 +14,7 @@ interface SymbolDevScreenProps {
 }
 
 const DEFAULT_PATTERN: SymbolDef = {
-    id: 'SZ:NEW-PATTERN-001',
+    id: 'NEW-PATTERN',
     name: 'New Pattern',
     kind: 'pattern',
     triad: '⟐⇌⟐',
@@ -37,7 +37,7 @@ const DEFAULT_PATTERN: SymbolDef = {
 };
 
 const DEFAULT_LATTICE: SymbolDef = {
-    id: 'SZ:NEW-LATTICE-001',
+    id: 'NEW-LATTICE',
     name: 'New Lattice',
     kind: 'lattice',
     triad: '⟐≡⟐',
@@ -65,7 +65,7 @@ const DEFAULT_LATTICE: SymbolDef = {
 };
 
 const DEFAULT_PERSONA: SymbolDef = {
-    id: 'SZ:NEW-PERSONA-001',
+    id: 'NEW-PERSONA',
     name: 'New Persona',
     kind: 'persona',
     triad: '⟐⟐⟐',
@@ -404,7 +404,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
         setCurrentSymbol({
             ...DEFAULT_PATTERN,
             symbol_domain: selectedDomain || 'root',
-            id: `SZ:${(selectedDomain || 'NEW').toUpperCase()}-PAT-001`
+            id: `${(selectedDomain || 'NEW').toUpperCase()}-PAT`
         });
         setOriginalId(null);
         setIsDirty(false);
@@ -419,7 +419,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
         setCurrentSymbol({
             ...DEFAULT_LATTICE,
             symbol_domain: selectedDomain || 'root',
-            id: `SZ:${(selectedDomain || 'NEW').toUpperCase()}-LAT-001`
+            id: `${(selectedDomain || 'NEW').toUpperCase()}-LAT`
         });
         setOriginalId(null);
         setIsDirty(false);
@@ -434,7 +434,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
         setCurrentSymbol({
             ...DEFAULT_PERSONA,
             symbol_domain: selectedDomain || 'root',
-            id: `SZ:${(selectedDomain || 'NEW').toUpperCase()}-PER-001`
+            id: `${(selectedDomain || 'NEW').toUpperCase()}-PER`
         });
         setOriginalId(null);
         setIsDirty(false);
