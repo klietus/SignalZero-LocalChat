@@ -187,10 +187,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
     }
   };
 
-  // Formatter to handle code blocks, <sz_symbol> blocks, <sz_domain> blocks, <think> blocks, and Markdown text
+  // Formatter to handle code blocks and Markdown text (with integrated sz tags)
   const formatText = (text: string) => {
-    // Split by Code Blocks OR Symbol Blocks OR Domain Blocks OR Think Blocks
-    const parts = text.split(/(`{3}[\s\S]*?`{3}|<sz_symbol>[\s\S]*?<\/sz_symbol>|<sz_domain>[\s\S]*?<\/sz_domain>|<(?:seed:)?think>[\s\S]*?<\/(?:seed:)?think>)/g);
+    // Split ONLY by Code Blocks to isolate them
+    const parts = text.split(/(`{3}[\s\S]*?`{3})/g);
     
     return parts.map((part, i) => {
       // 1. Handle Code Blocks
@@ -203,74 +203,45 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
         );
       }
 
-      // 2. Handle <think> or <seed:think> Blocks
-      const thinkMatch = part.match(/^<(seed:)?think>([\s\S]*?)<\/(seed:)?think>$/);
-      if (thinkMatch) {
-          const content = thinkMatch[2].trim();
-          return <ThinkingBlock key={i} content={content} />;
-      }
+      // 2. Handle Markdown and integrated custom tags
+      // Pre-process: Convert <think>, <sz_id>, <sz_symbol>, and <sz_domain> into markdown links or placeholders
+      let markdownContent = part;
 
-      // 3. Handle <sz_symbol> Blocks (Full JSON Definition)
-      if (part.startsWith('<sz_symbol>') && part.endsWith('</sz_symbol>')) {
-         const inner = part.replace(/<\/?sz_symbol>/g, '');
-         const cleanInner = inner.replace(/```json\n?|```/g, '').trim();
-         
-         let id = "SYNTHETIC_SYMBOL";
-         let name = "";
-         let json: any = null;
+      // Handle <think> tags (convert to a format ReactMarkdown component can catch)
+      markdownContent = markdownContent.replace(/<(?:seed:)?think>([\s\S]*?)<\/(?:seed:)?think>/g, (match, content) => {
+          // Use a special protocol for thinking
+          return `[${content.trim()}](sz-think:thinking)`;
+      });
 
-         try {
-             json = JSON.parse(cleanInner);
-             if (json.id) id = json.id;
-             if (json.name) name = decodeUnicode(json.name);
-         } catch (e) {
-             const matchId = cleanInner.match(/"id"\s*:\s*"([^"]+)"/);
-             if (matchId) id = matchId[1];
-             const matchName = cleanInner.match(/"name"\s*:\s*"([^"]+)"/);
-             if (matchName) name = decodeUnicode(matchName[1]);
-         }
+      // Handle <sz_id> tags
+      markdownContent = markdownContent.replace(/<sz_id>(.*?)<\/sz_id>/g, '[$1](sz:$1)');
 
-         return (
-             <div key={i} className="inline-block align-middle my-1">
-                 <SymbolTag 
-                    id={id} 
-                    name={name} 
-                    onClick={(clickId) => onSymbolClick && onSymbolClick(clickId, json)} 
-                 />
-             </div>
-         );
-      }
+      // Handle <sz_symbol> tags
+      markdownContent = markdownContent.replace(/<sz_symbol>([\s\S]*?)<\/sz_symbol>/g, (match, inner) => {
+          const cleanJson = inner.replace(/```json\n?|```/g, '').trim();
+          try {
+              const data = JSON.parse(cleanJson);
+              const label = data.name || data.id || "Symbol";
+              // Base64 encode the JSON to safely pass it in a URL
+              const payload = btoa(unescape(encodeURIComponent(cleanJson)));
+              return `[${label}](sz-symbol:${payload})`;
+          } catch (e) {
+              return `[Malformed Symbol](sz-error:invalid-json)`;
+          }
+      });
 
-      // 3. Handle <sz_domain> Blocks (Full JSON Definition)
-      if (part.startsWith('<sz_domain>') && part.endsWith('</sz_domain>')) {
-         const inner = part.replace(/<\/?sz_domain>/g, '');
-         const cleanInner = inner.replace(/```json\n?|```/g, '').trim();
-         
-         let id = "UNKNOWN_DOMAIN";
-         let name = "";
-
-         try {
-             const json = JSON.parse(cleanInner);
-             if (json.domain_id) id = json.domain_id;
-             if (json.name) name = decodeUnicode(json.name);
-         } catch (e) {
-             const matchId = cleanInner.match(/"domain_id"\s*:\s*"([^"]+)"/);
-             if (matchId) id = matchId[1];
-             const matchName = cleanInner.match(/"name"\s*:\s*"([^"]+)"/);
-             if (matchName) name = decodeUnicode(matchName[1]);
-         }
-
-         return (
-             <div key={i} className="inline-block align-middle my-1">
-                 <DomainTag id={id} name={name} onClick={onDomainClick} />
-             </div>
-         );
-      }
-
-      // 4. Handle Markdown Text (with embedded <sz_id> tags)
-      // Pre-process: Replace <sz_id>ID</sz_id> with markdown links [ID](sz:ID)
-      // We use a regex that captures the content non-greedily
-      let markdownContent = part.replace(/<sz_id>(.*?)<\/sz_id>/g, '[$1](sz:$1)');
+      // Handle <sz_domain> tags
+      markdownContent = markdownContent.replace(/<sz_domain>([\s\S]*?)<\/sz_domain>/g, (match, inner) => {
+          const cleanJson = inner.replace(/```json\n?|```/g, '').trim();
+          try {
+              const data = JSON.parse(cleanJson);
+              const label = data.name || data.domain_id || "Domain";
+              const payload = btoa(unescape(encodeURIComponent(cleanJson)));
+              return `[${label}](sz-domain:${payload})`;
+          } catch (e) {
+              return `[Malformed Domain](sz-error:invalid-json)`;
+          }
+      });
       
       // Decode unicode escapes in the text content
       markdownContent = decodeUnicode(markdownContent);
@@ -279,19 +250,63 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
         <div key={i} className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-gray-950 prose-pre:border prose-pre:border-gray-800">
            <ReactMarkdown
              remarkPlugins={[remarkGfm]}
-             // CRITICAL: Allow sz: protocol which might otherwise be sanitized by default
              urlTransform={(url: string) => url}
              components={{
                 a: ({href, children, ...props}: any) => {
-                    // Check if this is a SignalZero symbol link
-                    if (href && href.startsWith('sz:')) {
+                    if (!href) return null;
+
+                    // 1. Thinking Block
+                    if (href.startsWith('sz-think:')) {
+                        const content = children?.[0] || "";
+                        return <ThinkingBlock content={String(content)} />;
+                    }
+
+                    // 2. Symbol Tag
+                    if (href.startsWith('sz-symbol:')) {
+                        try {
+                            const b64 = href.replace(/^sz-symbol:/, '');
+                            const jsonStr = decodeURIComponent(escape(atob(b64)));
+                            const data = JSON.parse(jsonStr);
+                            return (
+                                <span className="inline-block align-middle mx-0.5">
+                                    <SymbolTag 
+                                        id={data.id} 
+                                        name={data.name} 
+                                        onClick={(clickId) => onSymbolClick && onSymbolClick(clickId, data)} 
+                                    />
+                                </span>
+                            );
+                        } catch (e) {
+                            return <span className="text-red-500">[Invalid Symbol Data]</span>;
+                        }
+                    }
+
+                    // 3. Domain Tag
+                    if (href.startsWith('sz-domain:')) {
+                        try {
+                            const b64 = href.replace(/^sz-domain:/, '');
+                            const jsonStr = decodeURIComponent(escape(atob(b64)));
+                            const data = JSON.parse(jsonStr);
+                            return (
+                                <span className="inline-block align-middle mx-0.5">
+                                    <DomainTag id={data.domain_id} name={data.name} onClick={onDomainClick} />
+                                </span>
+                            );
+                        } catch (e) {
+                            return <span className="text-red-500">[Invalid Domain Data]</span>;
+                        }
+                    }
+
+                    // 4. Legacy sz: protocol
+                    if (href.startsWith('sz:')) {
                         const id = href.replace(/^sz:/, '');
-                        // If children is the same as ID, don't pass name to avoid duplication unless we want to fetch it? 
-                        // Usually sz_id just contains the ID.
                         return (
-                            <SymbolTag id={id} onClick={(clickId) => onSymbolClick && onSymbolClick(clickId)} />
+                            <span className="inline-block align-middle mx-0.5">
+                                <SymbolTag id={id} onClick={(clickId) => onSymbolClick && onSymbolClick(clickId)} />
+                            </span>
                         );
                     }
+
                     // Standard external link
                     return <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline" {...props}>{children}</a>;
                 },
@@ -304,7 +319,19 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
                     );
                 },
                 p: ({children}: any) => (
-                    <p className="block whitespace-pre-wrap mt-0 mb-4 last:mb-0 leading-relaxed">{children}</p>
+                    <span className="inline whitespace-pre-wrap leading-relaxed">{children}</span>
+                ),
+                ul: ({children}: any) => (
+                    <ul className="block p-0 m-0 ml-6 list-disc">{children}</ul>
+                ),
+                ol: ({children}: any) => (
+                    <ol className="block p-0 m-0 ml-6 list-decimal">{children}</ol>
+                ),
+                li: ({children}: any) => (
+                    <li className="mb-1 last:mb-0">{children}</li>
+                ),
+                hr: () => (
+                    <hr className="my-2 border-gray-200 dark:border-gray-800" />
                 )
              }}
            >

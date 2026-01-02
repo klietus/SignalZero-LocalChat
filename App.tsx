@@ -402,6 +402,15 @@ function App() {
       getSystemPrompt().then(p => { if(p) setActiveSystemPrompt(p); }).catch(() => {});
   }, []);
 
+  // Refresh system prompt when entering project view
+  useEffect(() => {
+      if (currentView === 'project' && isServerConnected) {
+          getSystemPrompt().then(p => {
+              if (p) setActiveSystemPrompt(p);
+          }).catch(err => console.error("Failed to refresh system prompt", err));
+      }
+  }, [currentView, isServerConnected]);
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100">
         {/* Left Panel */}
@@ -419,7 +428,16 @@ function App() {
             {currentView === 'context' ? (
                 <ContextScreen onNewProject={() => {}} onImportProject={async () => {}} onHelp={() => setCurrentView('help')} />
             ) : currentView === 'project' ? (
-                <ProjectScreen headerProps={getHeaderProps('Project')} projectMeta={projectMeta} setProjectMeta={setProjectMeta} systemPrompt={activeSystemPrompt} onSystemPromptChange={setSystemPrompt} onClearChat={() => {}} onImportProject={async () => {}} onNewProject={() => {}} />
+                <ProjectScreen 
+                    headerProps={getHeaderProps('Project')} 
+                    projectMeta={projectMeta} 
+                    setProjectMeta={setProjectMeta} 
+                    systemPrompt={activeSystemPrompt} 
+                    onSystemPromptChange={(val) => { setActiveSystemPrompt(val); setSystemPrompt(val); }} 
+                    onClearChat={() => {}} 
+                    onImportProject={async () => {}} 
+                    onNewProject={() => {}} 
+                />
             ) : currentView === 'dev' ? (
                 <SymbolDevScreen headerProps={getHeaderProps('Forge')} onBack={() => { setDevInitialSymbol(null); setCurrentView('chat'); }} initialDomain={devInitialDomain} initialSymbol={devInitialSymbol} />
             ) : currentView === 'store' ? (

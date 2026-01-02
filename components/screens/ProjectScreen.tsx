@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Package, Download, Upload, Save, AlertTriangle, FileText, CheckCircle2, Loader2, Plus } from 'lucide-react';
 import { projectService } from '../../services/projectService';
 import { ProjectMeta } from '../../types';
@@ -37,6 +37,11 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync local state with prop when it changes (e.g. on navigation or external update)
+  useEffect(() => {
+      setPromptText(systemPrompt);
+  }, [systemPrompt]);
 
   const handleSavePrompt = () => {
       onSystemPromptChange(promptText);
