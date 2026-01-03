@@ -27,6 +27,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [chromaCollection, setChromaCollection] = useState('');
   const [inferenceEndpoint, setInferenceEndpoint] = useState('');
   const [inferenceModel, setInferenceModel] = useState('');
+  const [inferenceLoopModel, setInferenceLoopModel] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +81,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
     setInferenceEndpoint(inference.endpoint || '');
     setInferenceModel(inference.model || '');
+    setInferenceLoopModel(inference.loopModel || inference.model || '');
   };
 
   useEffect(() => {
@@ -115,7 +117,8 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
         const chromaUrl = buildUrlFromParts(chromaHost, chromaPort);
         const inferencePayload = {
             endpoint: inferenceEndpoint || undefined,
-            model: inferenceModel || undefined
+            model: inferenceModel || undefined,
+            loopModel: inferenceLoopModel || undefined
         };
 
         const updated = await settingsService.update({
@@ -320,7 +323,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     />
                 </div>
                 <div className="space-y-2">
-                    <span className="text-[11px] font-mono text-gray-500 uppercase">Model</span>
+                    <span className="text-[11px] font-mono text-gray-500 uppercase">Chat Model</span>
                     <input
                         type="text"
                         value={inferenceModel}
@@ -329,8 +332,18 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
                     />
                 </div>
+                <div className="space-y-2">
+                    <span className="text-[11px] font-mono text-gray-500 uppercase">Loop Model</span>
+                    <input
+                        type="text"
+                        value={inferenceLoopModel}
+                        onChange={(e) => setInferenceLoopModel(e.target.value)}
+                        placeholder="lmstudio-community/Meta-Llama-3-70B-Instruct"
+                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                    />
+                </div>
                 <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
-                    Configure the OpenAI-compatible endpoint and model used for inference.
+                    Configure the OpenAI-compatible endpoint and models used for chat and autonomous loops.
                 </p>
             </div>
 

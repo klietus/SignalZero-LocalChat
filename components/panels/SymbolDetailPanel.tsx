@@ -231,22 +231,22 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                                 </div>
                             </div>
                             
-                            {data.lattice.members && data.lattice.members.length > 0 && (
+                            {data.linked_patterns && data.linked_patterns.length > 0 && (
                                 <div>
                                     <span className="text-[10px] text-gray-500 uppercase font-mono mb-2 block">Lattice Members</span>
                                     <ul className="space-y-1">
-                                        {data.lattice.members.map((member: any, i: number) => {
-                                            const memberId = safeRenderItem(member);
+                                        {data.linked_patterns.map((memberId: any, i: number) => {
+                                            const displayId = safeRenderItem(memberId);
                                             return (
                                                 <li key={i} className="flex items-center gap-2">
                                                     <div className="w-5 h-5 rounded-full bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300 flex items-center justify-center text-[10px] font-bold font-mono">
                                                         {i + 1}
                                                     </div>
                                                     <button 
-                                                        onClick={() => onSymbolClick && onSymbolClick(memberId)}
+                                                        onClick={() => onSymbolClick && onSymbolClick(displayId)}
                                                         className="text-xs font-mono text-gray-700 dark:text-gray-300 hover:text-purple-500 transition-colors"
                                                     >
-                                                        {memberId}
+                                                        {displayId}
                                                     </button>
                                                 </li>
                                             );

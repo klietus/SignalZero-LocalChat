@@ -173,6 +173,9 @@ function App() {
 
   const rawGroups = useMemo(() => activeContextId ? messageHistory[activeContextId] || [] : [], [activeContextId, messageHistory]);
   
+  const activeContext = useMemo(() => contexts.find(c => c.id === activeContextId), [activeContextId, contexts]);
+  const isLoopContext = activeContext?.type === 'loop';
+
   const messages = useMemo(() => {
       return rawGroups.flatMap(group => {
           const userMsg = mapSingleContextMessage(group.userMessage);
@@ -183,10 +186,9 @@ function App() {
           
           if (assistantMsgs.length > 0) {
               const merged = mergeModelMessages(assistantMsgs, group.status);
-              // Hide empty tool rounds if no content? (Per previous instruction)
-              // But if status is processing, show it (will be pulse or content)
-              if (group.status === 'processing' || hasContent || !hasTools) { 
-                  // !hasTools check: if completely empty and not processing, maybe skip?
+              // If it's a loop context, show everything.
+              // Otherwise, hide empty tool rounds if no content.
+              if (isLoopContext || group.status === 'processing' || hasContent || !hasTools) { 
                   return [userMsg, merged];
               }
               // If only tools and complete, user wanted to hide it.
@@ -279,7 +281,7 @@ function App() {
           } catch (e) { console.error(e); }
       };
 
-      const interval = setInterval(poll, 5000);
+      const interval = setInterval(poll, 2000);
       return () => clearInterval(interval);
   }, [isServerConnected]); // Removed messageHistory dependency
 

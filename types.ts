@@ -51,11 +51,13 @@ export interface ChromaSettings {
 export interface InferenceSettings {
   endpoint?: string;
   model?: string;
+  loopModel?: string;
 }
 
 export interface InferenceSettingsUpdate {
   endpoint?: string;
   model?: string;
+  loopModel?: string;
 }
 
 export interface SystemSettings {
@@ -190,7 +192,6 @@ export type LatticeClosure = 'loop' | 'branch' | 'collapse' | 'constellation' | 
 export interface SymbolLatticeDef {
     topology: LatticeTopology;
     closure: LatticeClosure;
-    members: string[]; // List of Symbol IDs in execution order
 }
 
 export interface SymbolPersonaDef {
@@ -206,6 +207,7 @@ export interface SymbolDef {
   kind?: SymbolKind; // defaults to 'pattern' if undefined
   created_at?: string;
   updated_at?: string;
+  last_accessed_at?: string;
   triad: string;
   role: string;
   macro: string; // Used for patterns
