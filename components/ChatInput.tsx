@@ -88,7 +88,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
 
     recognition.onresult = (event: any) => {
       const transcript = Array.from(event.results)
-        .map((result) => result[0].transcript)
+        .map((result: any) => result[0].transcript)
         .join(' ')
         .trim();
       setText(transcript);

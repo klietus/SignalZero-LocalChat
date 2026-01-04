@@ -45,8 +45,7 @@ const DEFAULT_LATTICE: SymbolDef = {
     macro: '', // Lattices don't strictly use macro, they use lattice def
     lattice: {
         topology: 'inductive',
-        closure: 'loop',
-        members: []
+        closure: 'loop'
     },
     activation_conditions: [],
     symbol_domain: 'root',
@@ -189,7 +188,6 @@ const sanitizeForEditor = (raw: any): SymbolDef => {
         // For dropdowns, defaults are acceptable, but for text/lists ensure empty
         copy.lattice.topology = copy.lattice.topology || 'inductive';
         copy.lattice.closure = copy.lattice.closure || 'loop';
-        copy.lattice.members = copy.lattice.members || [];
     }
 
     // Persona Specific
@@ -477,18 +475,14 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                 const newLattice = JSON.parse(cleanJson);
 
                 // Normalize members to string array
-                let members = newLattice.lattice?.members || [];
+                let members = newLattice.lattice?.members || newLattice.linked_patterns || [];
                 if (Array.isArray(members)) {
                     members = members.map((m: any) => typeof m === 'object' ? m.id : String(m));
                 }
 
-                // Fallback to linked_patterns if members empty
+                // Fallback to current linked_patterns if needed
                 if (!members || members.length === 0) {
-                    members = currentSymbol.linked_patterns || [];
-                }
-                // Ensure linked_patterns is also normalized
-                if (Array.isArray(members)) {
-                    members = members.map((m: any) => typeof m === 'object' ? m.id : String(m));
+                    members = (currentSymbol.linked_patterns || []).map((m: any) => typeof m === 'object' ? m.id : String(m));
                 }
 
                 setConvertConfig({
@@ -579,11 +573,10 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
             role: 'lattice', // Set role per request
             lattice: {
                 topology: convertConfig.topology as any,
-                closure: convertConfig.closure as any,
-                members: convertConfig.members // Use synthesized members
+                closure: convertConfig.closure as any
             },
-            // Clear linked_patterns as they have moved to members
-            linked_patterns: [],
+            // Use linked_patterns for lattice membership
+            linked_patterns: convertConfig.members,
             // Merge facets but ensure lattice defaults are applied where relevant
             facets: {
                 ...currentSymbol.facets,
@@ -1110,8 +1103,8 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                     <div className="space-y-1">
                                         <Label>Lattice Members (Execution Order)</Label>
                                         <SymbolRelationshipField
-                                            items={currentSymbol.lattice?.members}
-                                            onChange={(newItems) => handleLatticeChange('members', newItems)}
+                                            items={currentSymbol.linked_patterns}
+                                            onChange={(newItems) => handleChange('linked_patterns', newItems)}
                                             placeholder="No members assigned"
                                         />
                                     </div>

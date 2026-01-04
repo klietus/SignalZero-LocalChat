@@ -92,6 +92,7 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
             substrate: [],
             invariants: []
         },
+        activation_conditions: [],
         failure_mode: 'Registry Miss',
         linked_patterns: [],
         macro: ''
