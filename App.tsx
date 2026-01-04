@@ -116,7 +116,7 @@ const mergeModelMessages = (msgs: Message[], status?: string): Message => {
     const last = msgs[msgs.length - 1];
     return {
         ...msgs[0], 
-        content: msgs.map(m => m.content).filter(c => c && c.trim()).join('\n\n'),
+        content: msgs.map(m => m.content).filter(c => c && c.trim()).join('  \n\n\n'),
         toolCalls: msgs.flatMap(m => m.toolCalls || []),
         timestamp: last.timestamp, 
         isStreaming: status === 'processing' || last.isStreaming
@@ -218,6 +218,7 @@ function App() {
   // Polling Logic
   const latestTimestamps = useRef<Record<string, string>>({});
   const latestTraceTimestamp = useRef<number>(0);
+  const prevContextsSig = useRef<string>('');
 
   useEffect(() => {
       if (!isServerConnected) return;
@@ -227,7 +228,12 @@ function App() {
               // 1. Refresh Context List
               const list = await contextService.list();
               const activeList = list.filter(c => c.status === 'open').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-              setContexts(activeList);
+              
+              const currentSig = JSON.stringify(activeList);
+              if (currentSig !== prevContextsSig.current) {
+                  setContexts(activeList);
+                  prevContextsSig.current = currentSig;
+              }
 
               // 2. Poll History for Active Contexts
               for (const ctx of activeList) {

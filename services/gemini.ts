@@ -1,5 +1,6 @@
 import { SymbolDef, TestResult, TraceData, TestMeta, EvaluationMetrics } from '../types';
 import { apiFetch } from './api';
+import { contextService } from './contextService';
 
 // --- Chat Service ---
 
@@ -39,6 +40,38 @@ export const sendMessage = async (
     // Async endpoint returns 202, no body content to wait for
 };
 
+// --- Helper for One-Off Generations ---
+const sendAndWait = async (prompt: string): Promise<string> => {
+    // 1. Create ephemeral context
+    const session = await contextService.create();
+    
+    try {
+        // 2. Send message
+        await sendMessage(prompt, session.id);
+        
+        // 3. Poll for response (Max 30s)
+        const startTime = Date.now();
+        while (Date.now() - startTime < 30000) {
+            await new Promise(r => setTimeout(r, 1000));
+            const { history } = await contextService.getHistory(session.id);
+            
+            // Find assistant message
+            const assistantMsg = history
+                .flatMap(g => g.assistantMessages)
+                .find(m => m.content && m.content.trim().length > 0);
+                
+            if (assistantMsg) {
+                return assistantMsg.content;
+            }
+        }
+        throw new Error("Generation timed out");
+    } finally {
+        // Cleanup (fire and forget)
+        contextService.archive(session.id).catch(console.error);
+    }
+};
+
+
 // --- Logic Generators ---
 // These now rely on the backend chat to handle the logic. 
 // We send the specific prompt to the chat.
@@ -55,8 +88,7 @@ export const generateSymbolSynthesis = async (
     
     Output valid XML <sz_symbol>...</sz_symbol>.
     `;
-    const result = await sendMessage(prompt);
-    return result.text;
+    return await sendAndWait(prompt);
 };
 
 export const generateRefactor = async (
@@ -69,19 +101,19 @@ export const generateRefactor = async (
     USER INSTRUCTION: "${input}"
     Use the bulk_update_symbols tool.
     `;
-    return await sendMessage(prompt);
+    // Note: tools might not run in ephemeral context efficiently if they require confirmation loop,
+    // but for now we attempt it.
+    return await sendAndWait(prompt);
 };
 
 export const generatePersonaConversion = async (currentSymbol: SymbolDef): Promise<string> => {
     const prompt = `TASK: Convert this symbol to a Persona: ${JSON.stringify(currentSymbol)}`;
-    const result = await sendMessage(prompt);
-    return result.text;
+    return await sendAndWait(prompt);
 };
 
 export const generateLatticeConversion = async (currentSymbol: SymbolDef): Promise<string> => {
     const prompt = `TASK: Convert this symbol to a Lattice: ${JSON.stringify(currentSymbol)}`;
-    const result = await sendMessage(prompt);
-    return result.text;
+    return await sendAndWait(prompt);
 };
 
 export const generateGapSynthesis = async (
@@ -96,8 +128,7 @@ export const generateGapSynthesis = async (
     Original Prompt: ${promptOriginal}
     Active Domains: ${activeDomains.join(', ')}
     `;
-    const result = await sendMessage(prompt);
-    return result.text;
+    return await sendAndWait(prompt);
 };
 
 
@@ -159,9 +190,9 @@ export const evaluateComparison = async (prompt: string, szResponse: string, bas
     // but effectively it should call an eval endpoint. 
     // For now, we stub it or ask the chat to do it.
     const evalPrompt = `Evaluate these responses... JSON Output...`;
-    const res = await sendMessage(evalPrompt);
+    const text = await sendAndWait(evalPrompt);
     try {
-        return JSON.parse(res.text);
+        return JSON.parse(text);
     } catch {
         return {
             sz: { alignment_score: 0, drift_detected: false, symbolic_depth: 0, reasoning_depth: 0, auditability_score: 0 },
