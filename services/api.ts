@@ -83,3 +83,31 @@ export const apiFetch = async (path: string, options: ApiOptions = {}) => {
         throw error;
     }
 };
+
+export const uploadFile = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const url = `${getApiUrl()}/upload`;
+    // Note: Do NOT set Content-Type header for FormData, fetch does it automatically with boundary
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+             // Explicitly don't merge default JSON headers here
+            headers: {
+                'x-api-key': localStorage.getItem('signalzero_api_key') || ''
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Upload failed: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        logger.error('API_UPLOAD_ERROR', 'File upload failed', error);
+        throw error;
+    }
+};

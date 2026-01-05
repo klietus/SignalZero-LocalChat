@@ -40,6 +40,13 @@ export const sendMessage = async (
     // Async endpoint returns 202, no body content to wait for
 };
 
+export const stopMessage = async (contextSessionId: string): Promise<void> => {
+    await apiFetch('/chat/stop', {
+        method: 'POST',
+        body: JSON.stringify({ contextSessionId })
+    });
+};
+
 // --- Helper for One-Off Generations ---
 const sendAndWait = async (prompt: string): Promise<string> => {
     // 1. Create ephemeral context

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, LogOut, Shield, Database, Server, Network, Lock, Cpu } from 'lucide-react';
+import { X, Save, LogOut, Shield, Database, Server, Network, Lock, Cpu, Cloud } from 'lucide-react';
 import { UserProfile } from '../types';
 import { getApiUrl, setApiUrl } from '../services/config';
 import { settingsService } from '../services/settingsService';
@@ -25,9 +25,15 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [chromaHost, setChromaHost] = useState('');
   const [chromaPort, setChromaPort] = useState('');
   const [chromaCollection, setChromaCollection] = useState('');
+  
+  // Inference State
+  const [inferenceProvider, setInferenceProvider] = useState<'local' | 'openai'>('local');
+  const [inferenceApiKey, setInferenceApiKey] = useState('');
   const [inferenceEndpoint, setInferenceEndpoint] = useState('');
   const [inferenceModel, setInferenceModel] = useState('');
   const [inferenceLoopModel, setInferenceLoopModel] = useState('');
+  const [inferenceVisionModel, setInferenceVisionModel] = useState('');
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,9 +85,12 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     setChromaPort(port);
     setChromaCollection(chroma.collection || chroma.collectionName || 'signalzero');
 
+    setInferenceProvider(inference.provider || 'local');
+    setInferenceApiKey(inference.apiKey || '');
     setInferenceEndpoint(inference.endpoint || '');
     setInferenceModel(inference.model || '');
     setInferenceLoopModel(inference.loopModel || inference.model || '');
+    setInferenceVisionModel(inference.visionModel || '');
   };
 
   useEffect(() => {
@@ -116,9 +125,12 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
         const redisPortNumber = redisPort ? parseInt(redisPort, 10) : undefined;
         const chromaUrl = buildUrlFromParts(chromaHost, chromaPort);
         const inferencePayload = {
+            provider: inferenceProvider,
+            apiKey: inferenceApiKey,
             endpoint: inferenceEndpoint || undefined,
             model: inferenceModel || undefined,
-            loopModel: inferenceLoopModel || undefined
+            loopModel: inferenceLoopModel || undefined,
+            visionModel: inferenceVisionModel || undefined
         };
 
         const updated = await settingsService.update({
@@ -131,7 +143,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 url: chromaUrl || undefined,
                 collection: chromaCollection || undefined
             },
-            inference: (inferencePayload.endpoint || inferencePayload.model) ? inferencePayload : undefined
+            inference: inferencePayload
         });
 
         hydrateSettings(updated);
@@ -310,41 +322,102 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
             {/* Inference Configuration */}
             <div className="space-y-2 pt-6 border-t border-gray-100 dark:border-gray-800">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono flex items-center gap-2">
-                    <Cpu size={14} /> Inference
+                    <Cpu size={14} /> Inference Provider
                 </label>
-                <div className="space-y-2">
-                    <span className="text-[11px] font-mono text-gray-500 uppercase">Endpoint</span>
-                    <input
-                        type="text"
-                        value={inferenceEndpoint}
-                        onChange={(e) => setInferenceEndpoint(e.target.value)}
-                        placeholder="http://localhost:1234/v1"
-                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
-                    />
+
+                {/* Provider Selector */}
+                <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <button
+                        onClick={() => setInferenceProvider('local')}
+                        className={`flex items-center justify-center gap-2 py-1.5 rounded text-xs font-bold font-mono transition-all ${
+                            inferenceProvider === 'local' 
+                            ? 'bg-white dark:bg-gray-700 text-emerald-600 shadow-sm' 
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                        }`}
+                    >
+                        <Server size={12} /> Local (LM Studio)
+                    </button>
+                    <button
+                         onClick={() => {
+                             setInferenceProvider('openai');
+                             if (!inferenceModel) setInferenceModel('gpt-4-turbo-preview');
+                         }}
+                         className={`flex items-center justify-center gap-2 py-1.5 rounded text-xs font-bold font-mono transition-all ${
+                            inferenceProvider === 'openai' 
+                            ? 'bg-white dark:bg-gray-700 text-indigo-600 shadow-sm' 
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                        }`}
+                    >
+                        <Cloud size={12} /> OpenAI API
+                    </button>
                 </div>
-                <div className="space-y-2">
-                    <span className="text-[11px] font-mono text-gray-500 uppercase">Chat Model</span>
-                    <input
-                        type="text"
-                        value={inferenceModel}
-                        onChange={(e) => setInferenceModel(e.target.value)}
-                        placeholder="lmstudio-community/Meta-Llama-3-70B-Instruct"
-                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
-                    />
+
+                <div className="space-y-4 pt-2">
+                    {/* API Key (OpenAI Only) */}
+                    {inferenceProvider === 'openai' && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                            <span className="text-[11px] font-mono text-gray-500 uppercase flex items-center gap-2">
+                                <Lock size={12} /> OpenAI API Key
+                            </span>
+                            <input
+                                type="password"
+                                value={inferenceApiKey}
+                                onChange={(e) => setInferenceApiKey(e.target.value)}
+                                placeholder="sk-..."
+                                className="w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                            />
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        <span className="text-[11px] font-mono text-gray-500 uppercase">Endpoint</span>
+                        <input
+                            type="text"
+                            value={inferenceEndpoint}
+                            onChange={(e) => setInferenceEndpoint(e.target.value)}
+                            placeholder={inferenceProvider === 'openai' ? 'https://api.openai.com/v1' : 'http://localhost:1234/v1'}
+                            disabled={inferenceProvider === 'openai'} 
+                            className={`w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100 ${inferenceProvider === 'openai' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        />
+                        {inferenceProvider === 'openai' && <p className="text-[10px] text-gray-400 italic">Using standard OpenAI endpoint.</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <span className="text-[11px] font-mono text-gray-500 uppercase">Chat Model</span>
+                        <input
+                            type="text"
+                            value={inferenceModel}
+                            onChange={(e) => setInferenceModel(e.target.value)}
+                            placeholder={inferenceProvider === 'openai' ? 'gpt-4-turbo-preview' : 'lmstudio-community/Meta-Llama-3-70B-Instruct'}
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                        />
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <span className="text-[11px] font-mono text-gray-500 uppercase">Loop Model</span>
+                        <input
+                            type="text"
+                            value={inferenceLoopModel}
+                            onChange={(e) => setInferenceLoopModel(e.target.value)}
+                            placeholder={inferenceProvider === 'openai' ? 'gpt-4-turbo-preview' : 'lmstudio-community/Meta-Llama-3-70B-Instruct'}
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <span className="text-[11px] font-mono text-gray-500 uppercase">Vision Model</span>
+                        <input
+                            type="text"
+                            value={inferenceVisionModel}
+                            onChange={(e) => setInferenceVisionModel(e.target.value)}
+                            placeholder={inferenceProvider === 'openai' ? 'gpt-4o-mini' : '(Optional)'}
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                        />
+                         <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
+                            Used for analyzing uploaded images.
+                        </p>
+                    </div>
                 </div>
-                <div className="space-y-2">
-                    <span className="text-[11px] font-mono text-gray-500 uppercase">Loop Model</span>
-                    <input
-                        type="text"
-                        value={inferenceLoopModel}
-                        onChange={(e) => setInferenceLoopModel(e.target.value)}
-                        placeholder="lmstudio-community/Meta-Llama-3-70B-Instruct"
-                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
-                    />
-                </div>
-                <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
-                    Configure the OpenAI-compatible endpoint and models used for chat and autonomous loops.
-                </p>
             </div>
 
         </div>

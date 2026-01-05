@@ -20,7 +20,7 @@ import { HelpScreen } from './components/screens/HelpScreen';
 import { ServerConnectScreen } from './components/screens/ServerConnectScreen';
 import { LoopsScreen } from './components/screens/LoopsScreen';
 
-import { sendMessage, setSystemPrompt, getSystemPrompt } from './services/gemini';
+import { sendMessage, stopMessage, setSystemPrompt, getSystemPrompt } from './services/gemini';
 import { domainService } from './services/domainService';
 import { projectService } from './services/projectService';
 import { testService } from './services/testService';
@@ -107,7 +107,8 @@ const mapSingleContextMessage = (item: ContextMessage): Message => {
         content: item.content || '',
         timestamp: new Date(item.timestamp),
         toolCalls,
-        correlationId: item.correlationId
+        correlationId: item.correlationId,
+        metadata: item.metadata
     };
 };
 
@@ -173,6 +174,12 @@ function App() {
 
   const rawGroups = useMemo(() => activeContextId ? messageHistory[activeContextId] || [] : [], [activeContextId, messageHistory]);
   
+  const isContextProcessingFromHistory = useMemo(() => {
+      if (rawGroups.length === 0) return false;
+      const lastGroup = rawGroups[rawGroups.length - 1];
+      return lastGroup.status === 'processing';
+  }, [rawGroups]);
+
   const activeContext = useMemo(() => contexts.find(c => c.id === activeContextId), [activeContextId, contexts]);
   const isLoopContext = activeContext?.type === 'loop';
 
@@ -212,8 +219,9 @@ function App() {
   }, [rawGroups]);
 
   const isCurrentContextProcessing = useMemo(() => {
-      return activeContextId ? processingContexts.has(activeContextId) : false;
-  }, [activeContextId, processingContexts]);
+      const isLocalProcessing = activeContextId ? processingContexts.has(activeContextId) : false;
+      return isLocalProcessing || isContextProcessingFromHistory;
+  }, [activeContextId, processingContexts, isContextProcessingFromHistory]);
 
   // Polling Logic
   const latestTimestamps = useRef<Record<string, string>>({});
@@ -319,6 +327,12 @@ function App() {
           }
       } catch (e) {
           console.error("Failed to archive", e);
+      }
+  };
+
+  const handleStopMessage = async () => {
+      if (activeContextId) {
+          await stopMessage(activeContextId);
       }
   };
 
@@ -495,7 +509,12 @@ function App() {
                         </div>
                     </div>
                     
-                    <ChatInput onSend={handleSendMessage} disabled={isCurrentContextProcessing || !activeContextId} />
+                    <ChatInput 
+                        onSend={handleSendMessage} 
+                        onStop={handleStopMessage}
+                        disabled={isCurrentContextProcessing || !activeContextId} 
+                        isProcessing={isCurrentContextProcessing}
+                    />
                     
                     <SymbolDetailPanel symbolId={selectedSymbolId} symbolData={selectedSymbolContext} onClose={() => { setSelectedSymbolId(null); setSelectedSymbolContext(null); }} onSymbolClick={handleSymbolClick} onDomainClick={setSelectedDomain} onInterpret={(id) => handleSendMessage(`Interpret ${id}`)} onOpenInForge={(data) => { setDevInitialSymbol(data); setCurrentView('dev'); setSelectedSymbolId(null); }} />
                     <DomainPanel domain={selectedDomain} onClose={() => setSelectedDomain(null)} onSymbolClick={handleSymbolClick} onLoadDomain={(dom) => handleSendMessage(`Load domain ${dom}`)} onDomainChange={setSelectedDomain} />

@@ -3,6 +3,13 @@ import { apiFetch } from './api';
 
 export const domainService = {
   
+  async createDomain(domainId: string, metadata: { name?: string, description?: string, invariants?: string[] } = {}): Promise<void> {
+    await apiFetch('/domains', {
+        method: 'POST',
+        body: JSON.stringify({ id: domainId, ...metadata })
+    });
+  },
+
   async listDomains(): Promise<string[]> {
     const res = await apiFetch('/domains');
     if (!res.ok) return [];

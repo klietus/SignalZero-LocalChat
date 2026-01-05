@@ -23,6 +23,7 @@ export interface Message {
   isStreaming?: boolean;
   toolCalls?: ToolCallDetails[];
   correlationId?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface AppState {
@@ -49,15 +50,21 @@ export interface ChromaSettings {
 }
 
 export interface InferenceSettings {
+  provider?: 'local' | 'openai';
+  apiKey?: string;
   endpoint?: string;
   model?: string;
   loopModel?: string;
+  visionModel?: string;
 }
 
 export interface InferenceSettingsUpdate {
+  provider?: 'local' | 'openai';
+  apiKey?: string;
   endpoint?: string;
   model?: string;
   loopModel?: string;
+  visionModel?: string;
 }
 
 export interface SystemSettings {

@@ -69,21 +69,7 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
   const handleCreateDomain = async () => {
       if (!newDomainId.trim()) return;
       const id = newDomainId.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
-      await domainService.upsertSymbol(id, { // Dummy symbol to init domain
-          id: `${id}-init`,
-          name: "Init",
-          kind: "pattern",
-          triad: "INI",
-          role: "Initializer",
-          symbol_domain: id,
-          symbol_tag: "system",
-          facets: {} as any,
-          failure_mode: "",
-          activation_conditions: [],
-          linked_patterns: [],
-          macro: ""
-      });
-      await domainService.updateDomainMetadata(id, {
+      await domainService.createDomain(id, {
           name: newDomainName || id,
           description: newDomainDesc,
           invariants: newDomainInvariants

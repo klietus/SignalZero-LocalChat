@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { User, Terminal, Network, ChevronDown, ChevronRight, Activity, Globe, Copy, RotateCcw } from 'lucide-react';
+import { User, Terminal, Network, ChevronDown, ChevronRight, Activity, Globe, Copy, RotateCcw, Paperclip } from 'lucide-react';
 // @ts-ignore
 import ReactMarkdown from 'react-markdown';
 // @ts-ignore
@@ -157,7 +157,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
   // Extract traces and clean content
   const { traces, contentWithoutTraces } = useMemo(() => {
     const extractedTraces: TraceData[] = [];
-    const cleanContent = message.content.replace(/<sz_trace>([\s\S]*?)<\/sz_trace>/g, (match, inner) => {
+    let cleanContent = message.content.replace(/<sz_trace>([\s\S]*?)<\/sz_trace>/g, (match, inner) => {
       try {
         const cleanJson = inner.replace(/```json\n?|```/g, '').trim();
         const data: TraceData = JSON.parse(cleanJson);
@@ -168,12 +168,22 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
       return ''; // Remove trace block from text
     });
 
+    // Strip attachments marker and everything after it for user messages in UI
+    if (isUser) {
+        const attachmentsMarker = "--- Attachments ---";
+        const markerIndex = cleanContent.indexOf(attachmentsMarker);
+        if (markerIndex !== -1) {
+            // Also try to strip the preceding newlines
+            cleanContent = cleanContent.substring(0, markerIndex).trim();
+        }
+    }
+
     if (extractedTraces.length > 0) {
         console.log(`[ChatMessage] Extracted ${extractedTraces.length} traces from message ${message.id}`);
     }
 
     return { traces: extractedTraces, contentWithoutTraces: cleanContent };
-  }, [message.content, message.id]);
+  }, [message.content, message.id, isUser]);
 
   const handleCopy = async () => {
     try {
@@ -364,6 +374,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
             }`}>
             
             {/* Header / Meta Controls */}
+            {isUser && message.metadata?.attachments && message.metadata.attachments.length > 0 && (
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/20 text-xs font-mono opacity-90">
+                    <Paperclip size={12} />
+                    <span>{message.metadata.attachments.length} Attachment{message.metadata.attachments.length !== 1 ? 's' : ''}</span>
+                </div>
+            )}
+
             {isAssistantResponse && (
               <div className="flex items-center justify-between gap-4 mb-3 pb-2 border-b border-gray-100 dark:border-gray-800 w-full">
                 {/* Left: Tool Toggle */}
