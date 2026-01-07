@@ -170,6 +170,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
 
     // Strip attachments marker and everything after it for user messages in UI
     if (isUser) {
+        // Remove XML attachment block
+        cleanContent = cleanContent.replace(/<attachments>[\s\S]*?<\/attachments>/g, '').trim();
+
         const attachmentsMarker = "--- Attachments ---";
         const markerIndex = cleanContent.indexOf(attachmentsMarker);
         if (markerIndex !== -1) {
@@ -278,13 +281,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
                             const jsonStr = decodeURIComponent(escape(atob(b64)));
                             const data = JSON.parse(jsonStr);
                             return (
-                                <span className="inline-block align-middle mx-0.5">
+                                <div className="block my-1">
                                     <SymbolTag 
                                         id={data.id} 
                                         name={data.name} 
                                         onClick={(clickId) => onSymbolClick && onSymbolClick(clickId, data)} 
                                     />
-                                </span>
+                                </div>
                             );
                         } catch (e) {
                             return <span className="text-red-500">[Invalid Symbol Data]</span>;
@@ -298,9 +301,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
                             const jsonStr = decodeURIComponent(escape(atob(b64)));
                             const data = JSON.parse(jsonStr);
                             return (
-                                <span className="inline-block align-middle mx-0.5">
+                                <div className="block my-1">
                                     <DomainTag id={data.domain_id} name={data.name} onClick={onDomainClick} />
-                                </span>
+                                </div>
                             );
                         } catch (e) {
                             return <span className="text-red-500">[Invalid Domain Data]</span>;
@@ -311,9 +314,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
                     if (href.startsWith('sz:')) {
                         const id = href.replace(/^sz:/, '');
                         return (
-                            <span className="inline-block align-middle mx-0.5">
+                            <div className="block my-1">
                                 <SymbolTag id={id} onClick={(clickId) => onSymbolClick && onSymbolClick(clickId)} />
-                            </span>
+                            </div>
                         );
                     }
 

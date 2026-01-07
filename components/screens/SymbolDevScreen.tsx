@@ -168,6 +168,7 @@ const sanitizeForEditor = (raw: any): SymbolDef => {
     copy.symbol_tag = copy.symbol_tag || '';
     copy.failure_mode = copy.failure_mode || '';
     copy.kind = copy.kind || 'pattern';
+    if (!copy.symbol_domain || copy.symbol_domain === 'undefined') copy.symbol_domain = 'root';
     
     // Arrays
     copy.linked_patterns = copy.linked_patterns || [];
@@ -540,10 +541,11 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                 await domainService.deleteSymbol(currentSymbol.symbol_domain, oldId, false);
 
                 // 3. Upsert New Persona
-                await domainService.upsertSymbol(currentSymbol.symbol_domain, newPersona);
+                const targetDomain = currentSymbol.symbol_domain || selectedDomain || 'root';
+                await domainService.upsertSymbol(targetDomain, newPersona);
 
                 // 4. Update UI
-                const updatedList = await domainService.getSymbols(currentSymbol.symbol_domain);
+                const updatedList = await domainService.getSymbols(targetDomain);
                 setSymbolList(updatedList);
                 
                 const sanitized = sanitizeForEditor(newPersona);
@@ -565,6 +567,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
 
     const confirmConversion = async () => {
         const oldId = originalId || currentSymbol.id;
+        const targetDomain = currentSymbol.symbol_domain || selectedDomain || 'root';
 
         const newLatticeSymbol: SymbolDef = {
             ...currentSymbol,
@@ -587,16 +590,16 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
 
         try {
             // 1. Propagate Rename: Update existing links to point to new ID
-            await domainService.propagateRename(currentSymbol.symbol_domain, oldId, convertConfig.newId);
+            await domainService.propagateRename(targetDomain, oldId, convertConfig.newId);
 
             // 2. Delete old (NO CASCADE, because we just updated the links)
-            await domainService.deleteSymbol(currentSymbol.symbol_domain, oldId, false);
+            await domainService.deleteSymbol(targetDomain, oldId, false);
 
             // 3. Save new
-            await domainService.upsertSymbol(currentSymbol.symbol_domain, newLatticeSymbol);
+            await domainService.upsertSymbol(targetDomain, newLatticeSymbol);
 
             // 4. Update UI
-            const updatedList = await domainService.getSymbols(currentSymbol.symbol_domain);
+            const updatedList = await domainService.getSymbols(targetDomain);
             setSymbolList(updatedList);
 
             setCurrentSymbol(sanitizeForEditor(newLatticeSymbol));
@@ -695,22 +698,25 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
         setSaveMessage(null);
 
         try {
+            let targetDomain = currentSymbol.symbol_domain || selectedDomain || 'root';
+            if (targetDomain === 'undefined') targetDomain = 'root';
+
             // Handle Rename: Delete old symbol if ID has changed and we are tracking an original ID
             if (originalId && originalId !== currentSymbol.id) {
                 console.log(`Renaming symbol: ${originalId} -> ${currentSymbol.id}`);
 
                 // 1. Propagate Rename
-                await domainService.propagateRename(currentSymbol.symbol_domain, originalId, currentSymbol.id);
+                await domainService.propagateRename(targetDomain, originalId, currentSymbol.id);
 
                 // 2. Delete old symbol, but DO NOT cascade delete the references we just updated
-                await domainService.deleteSymbol(currentSymbol.symbol_domain, originalId, false);
+                await domainService.deleteSymbol(targetDomain, originalId, false);
             }
 
             // Save to local cache
-            await domainService.upsertSymbol(currentSymbol.symbol_domain, currentSymbol);
+            await domainService.upsertSymbol(targetDomain, currentSymbol);
 
             // Refresh list
-            const updatedList = await domainService.getSymbols(currentSymbol.symbol_domain);
+            const updatedList = await domainService.getSymbols(targetDomain);
             setSymbolList(updatedList);
 
             // Update original ID to match new saved state

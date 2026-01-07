@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { SendHorizontal, Loader2, Mic, Square, Plus, FileUp, X } from 'lucide-react';
+import { SendHorizontal, Loader2, Mic, Square, Plus, FileUp, X, Play } from 'lucide-react';
 import { uploadFile } from '../services/api';
 
 interface ChatInputProps {
-  onSend: (message: string, options?: { viaVoice?: boolean }) => void;
+  onSend: (message: string, options?: { viaVoice?: boolean, attachments?: { id: string, filename: string, type: string }[] }) => void;
   onStop?: () => void;
   disabled?: boolean;
   isProcessing?: boolean;
@@ -122,7 +122,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, disabled, 
           finalMessage = finalMessage ? `${finalMessage}\n\n${attachmentBlock}` : attachmentBlock;
       }
 
-      onSend(finalMessage, { viaVoice: fromVoice });
+      onSend(finalMessage, { viaVoice: fromVoice, attachments: [...attachments] });
       setText('');
       setAttachments([]);
       submitFromVoiceRef.current = false;
@@ -281,7 +281,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, disabled, 
             className="w-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg py-3 pl-4 pr-28 resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 border border-transparent dark:border-gray-800 transition-all max-h-32 disabled:opacity-50 disabled:cursor-not-allowed font-sans text-base"
           />
 
-          <div className="absolute right-2 bottom-2 flex items-center gap-2">
+          <div className="absolute right-4 bottom-2 flex items-center gap-2">
             <button
               type="button"
               disabled={!isSpeechSupported || disabled}
@@ -296,14 +296,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, disabled, 
               type={isProcessing ? "button" : "submit"}
               disabled={((!text.trim() && attachments.length === 0) && !isProcessing) || (disabled && !isProcessing)}
               onClick={isProcessing && onStop ? onStop : undefined}
-              className={`p-2 rounded-md transition-all shadow-sm ${
+              className={`p-2 rounded-md shadow-sm transition-all flex items-center justify-center ${
                   isProcessing 
-                  ? 'bg-red-500 hover:bg-red-600 text-white' 
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-0 disabled:scale-75'
+                  ? 'bg-red-600 hover:bg-red-700 text-white' 
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 disabled:cursor-not-allowed'
               }`}
               aria-label={isProcessing ? "Stop generating" : "Send message"}
             >
-              {isProcessing ? <Square size={18} fill="currentColor" /> : <SendHorizontal size={18} />}
+              {isProcessing ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
             </button>
           </div>
         </form>

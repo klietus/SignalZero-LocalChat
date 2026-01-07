@@ -336,14 +336,20 @@ function App() {
       }
   };
 
-  const handleSendMessage = async (text: string, options?: { viaVoice?: boolean }) => {
+  const handleSendMessage = async (text: string, options?: { viaVoice?: boolean, attachments?: { id: string, filename: string, type: string }[] }) => {
       if (!activeContextId) {
           alert("Please select or create a context first.");
           return;
       }
 
       const userId = crypto.randomUUID();
-      const newMessage: ContextMessage = { id: userId, role: 'user', content: text, timestamp: new Date().toISOString() };
+      const newMessage: ContextMessage = { 
+          id: userId, 
+          role: 'user', 
+          content: text, 
+          timestamp: new Date().toISOString(),
+          metadata: options?.attachments ? { attachments: options.attachments } : undefined
+      };
       
       // Optimistic update: Add a new group with the user message
       const optimisticGroup: ContextHistoryGroup = {
