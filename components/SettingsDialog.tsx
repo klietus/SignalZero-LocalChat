@@ -27,12 +27,15 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [chromaCollection, setChromaCollection] = useState('');
   
   // Inference State
-  const [inferenceProvider, setInferenceProvider] = useState<'local' | 'openai'>('local');
+  const [inferenceProvider, setInferenceProvider] = useState<'local' | 'openai' | 'gemini'>('local');
   const [inferenceApiKey, setInferenceApiKey] = useState('');
   const [inferenceEndpoint, setInferenceEndpoint] = useState('');
   const [inferenceModel, setInferenceModel] = useState('');
   const [inferenceLoopModel, setInferenceLoopModel] = useState('');
   const [inferenceVisionModel, setInferenceVisionModel] = useState('');
+  
+  // Local storage for provider configs during session
+  const [storedConfigs, setStoredConfigs] = useState<Record<string, any>>({});
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -85,12 +88,79 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     setChromaPort(port);
     setChromaCollection(chroma.collection || chroma.collectionName || 'signalzero');
 
-    setInferenceProvider(inference.provider || 'local');
+    const provider = inference.provider || 'local';
+    setInferenceProvider(provider);
     setInferenceApiKey(inference.apiKey || '');
     setInferenceEndpoint(inference.endpoint || '');
     setInferenceModel(inference.model || '');
     setInferenceLoopModel(inference.loopModel || inference.model || '');
     setInferenceVisionModel(inference.visionModel || '');
+    
+    // Load saved configs
+    if (inference.savedConfigs) {
+        setStoredConfigs(inference.savedConfigs);
+    } else {
+        // Initialize current as a stored config so we don't lose it on first switch
+        setStoredConfigs(prev => ({
+            ...prev,
+            [provider]: {
+                apiKey: inference.apiKey,
+                endpoint: inference.endpoint,
+                model: inference.model,
+                loopModel: inference.loopModel,
+                visionModel: inference.visionModel
+            }
+        }));
+    }
+  };
+
+  const handleProviderChange = (newProvider: 'local' | 'openai' | 'gemini') => {
+      // 1. Save current state to storedConfigs
+      const currentConfig = {
+          apiKey: inferenceApiKey,
+          endpoint: inferenceEndpoint,
+          model: inferenceModel,
+          loopModel: inferenceLoopModel,
+          visionModel: inferenceVisionModel
+      };
+      
+      const updatedConfigs = {
+          ...storedConfigs,
+          [inferenceProvider]: currentConfig
+      };
+      setStoredConfigs(updatedConfigs);
+
+      // 2. Switch provider state
+      setInferenceProvider(newProvider);
+
+      // 3. Load config for new provider if exists, or defaults
+      const saved = updatedConfigs[newProvider];
+      if (saved) {
+          setInferenceApiKey(saved.apiKey || '');
+          setInferenceEndpoint(saved.endpoint || '');
+          setInferenceModel(saved.model || '');
+          setInferenceLoopModel(saved.loopModel || '');
+          setInferenceVisionModel(saved.visionModel || '');
+      } else {
+          // Defaults
+          setInferenceApiKey('');
+          if (newProvider === 'openai') {
+              setInferenceModel('gpt-4-turbo-preview');
+              setInferenceLoopModel('gpt-4-turbo-preview');
+              setInferenceVisionModel('gpt-4o-mini');
+              setInferenceEndpoint('');
+          } else if (newProvider === 'gemini') {
+              setInferenceModel('gemini-1.5-pro');
+              setInferenceLoopModel('gemini-1.5-pro');
+              setInferenceVisionModel('gemini-1.5-flash');
+              setInferenceEndpoint('');
+          } else {
+              setInferenceModel('lmstudio-community/Meta-Llama-3-70B-Instruct');
+              setInferenceLoopModel('lmstudio-community/Meta-Llama-3-70B-Instruct');
+              setInferenceVisionModel('gpt-4o-mini');
+              setInferenceEndpoint('');
+          }
+      }
   };
 
   useEffect(() => {
@@ -124,13 +194,25 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
         const redisPortNumber = redisPort ? parseInt(redisPort, 10) : undefined;
         const chromaUrl = buildUrlFromParts(chromaHost, chromaPort);
+        
+        // Ensure current UI values are saved to the config map before sending
+        const currentConfig = {
+          apiKey: inferenceApiKey,
+          endpoint: inferenceEndpoint,
+          model: inferenceModel,
+          loopModel: inferenceLoopModel,
+          visionModel: inferenceVisionModel
+        };
+        const finalConfigs = { ...storedConfigs, [inferenceProvider]: currentConfig };
+
         const inferencePayload = {
             provider: inferenceProvider,
             apiKey: inferenceApiKey,
             endpoint: inferenceEndpoint || undefined,
             model: inferenceModel || undefined,
             loopModel: inferenceLoopModel || undefined,
-            visionModel: inferenceVisionModel || undefined
+            visionModel: inferenceVisionModel || undefined,
+            savedConfigs: finalConfigs
         };
 
         const updated = await settingsService.update({
@@ -326,44 +408,51 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </label>
 
                 {/* Provider Selector */}
-                <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <div className="grid grid-cols-3 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
                     <button
-                        onClick={() => setInferenceProvider('local')}
+                        onClick={() => handleProviderChange('local')}
                         className={`flex items-center justify-center gap-2 py-1.5 rounded text-xs font-bold font-mono transition-all ${
                             inferenceProvider === 'local' 
                             ? 'bg-white dark:bg-gray-700 text-emerald-600 shadow-sm' 
                             : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                         }`}
                     >
-                        <Server size={12} /> Local (LM Studio)
+                        <Server size={12} /> Local
                     </button>
                     <button
-                         onClick={() => {
-                             setInferenceProvider('openai');
-                             if (!inferenceModel) setInferenceModel('gpt-4-turbo-preview');
-                         }}
+                         onClick={() => handleProviderChange('openai')}
                          className={`flex items-center justify-center gap-2 py-1.5 rounded text-xs font-bold font-mono transition-all ${
                             inferenceProvider === 'openai' 
                             ? 'bg-white dark:bg-gray-700 text-indigo-600 shadow-sm' 
                             : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                         }`}
                     >
-                        <Cloud size={12} /> OpenAI API
+                        <Cloud size={12} /> OpenAI
+                    </button>
+                    <button
+                         onClick={() => handleProviderChange('gemini')}
+                         className={`flex items-center justify-center gap-2 py-1.5 rounded text-xs font-bold font-mono transition-all ${
+                            inferenceProvider === 'gemini' 
+                            ? 'bg-white dark:bg-gray-700 text-blue-500 shadow-sm' 
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                        }`}
+                    >
+                        <Cpu size={12} /> Gemini
                     </button>
                 </div>
 
                 <div className="space-y-4 pt-2">
-                    {/* API Key (OpenAI Only) */}
-                    {inferenceProvider === 'openai' && (
+                    {/* API Key (OpenAI / Gemini) */}
+                    {(inferenceProvider === 'openai' || inferenceProvider === 'gemini') && (
                         <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
                             <span className="text-[11px] font-mono text-gray-500 uppercase flex items-center gap-2">
-                                <Lock size={12} /> OpenAI API Key
+                                <Lock size={12} /> {inferenceProvider === 'openai' ? 'OpenAI API Key' : 'Gemini API Key'}
                             </span>
                             <input
                                 type="password"
                                 value={inferenceApiKey}
                                 onChange={(e) => setInferenceApiKey(e.target.value)}
-                                placeholder="sk-..."
+                                placeholder="key..."
                                 className="w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
                             />
                         </div>
@@ -375,11 +464,11 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                             type="text"
                             value={inferenceEndpoint}
                             onChange={(e) => setInferenceEndpoint(e.target.value)}
-                            placeholder={inferenceProvider === 'openai' ? 'https://api.openai.com/v1' : 'http://localhost:1234/v1'}
-                            disabled={inferenceProvider === 'openai'} 
-                            className={`w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100 ${inferenceProvider === 'openai' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            placeholder={inferenceProvider === 'openai' ? 'https://api.openai.com/v1' : (inferenceProvider === 'gemini' ? 'https://generativelanguage.googleapis.com' : 'http://localhost:1234/v1')}
+                            disabled={inferenceProvider === 'openai' || inferenceProvider === 'gemini'} 
+                            className={`w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100 ${inferenceProvider !== 'local' ? 'opacity-50 cursor-not-allowed' : ''}`}
                         />
-                        {inferenceProvider === 'openai' && <p className="text-[10px] text-gray-400 italic">Using standard OpenAI endpoint.</p>}
+                        {inferenceProvider !== 'local' && <p className="text-[10px] text-gray-400 italic">Using standard provider endpoint.</p>}
                     </div>
 
                     <div className="space-y-2">
@@ -388,7 +477,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                             type="text"
                             value={inferenceModel}
                             onChange={(e) => setInferenceModel(e.target.value)}
-                            placeholder={inferenceProvider === 'openai' ? 'gpt-4-turbo-preview' : 'lmstudio-community/Meta-Llama-3-70B-Instruct'}
+                            placeholder={inferenceProvider === 'openai' ? 'gpt-4-turbo-preview' : (inferenceProvider === 'gemini' ? 'gemini-1.5-pro' : 'lmstudio-community/Meta-Llama-3-70B-Instruct')}
                             className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
                         />
                     </div>
@@ -399,7 +488,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                             type="text"
                             value={inferenceLoopModel}
                             onChange={(e) => setInferenceLoopModel(e.target.value)}
-                            placeholder={inferenceProvider === 'openai' ? 'gpt-4-turbo-preview' : 'lmstudio-community/Meta-Llama-3-70B-Instruct'}
+                            placeholder={inferenceProvider === 'openai' ? 'gpt-4-turbo-preview' : (inferenceProvider === 'gemini' ? 'gemini-1.5-pro' : 'lmstudio-community/Meta-Llama-3-70B-Instruct')}
                             className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
                         />
                     </div>
@@ -410,7 +499,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                             type="text"
                             value={inferenceVisionModel}
                             onChange={(e) => setInferenceVisionModel(e.target.value)}
-                            placeholder={inferenceProvider === 'openai' ? 'gpt-4o-mini' : '(Optional)'}
+                            placeholder={inferenceProvider === 'openai' ? 'gpt-4o-mini' : (inferenceProvider === 'gemini' ? 'gemini-1.5-flash' : '(Optional)')}
                             className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
                         />
                          <p className="text-[10px] text-gray-500 font-mono leading-relaxed">

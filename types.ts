@@ -49,17 +49,26 @@ export interface ChromaSettings {
   collectionName?: string;
 }
 
+export interface InferenceConfiguration {
+  apiKey: string;
+  endpoint: string;
+  model: string;
+  loopModel: string;
+  visionModel: string;
+}
+
 export interface InferenceSettings {
-  provider?: 'local' | 'openai';
+  provider?: 'local' | 'openai' | 'gemini';
   apiKey?: string;
   endpoint?: string;
   model?: string;
   loopModel?: string;
   visionModel?: string;
+  savedConfigs?: Record<string, InferenceConfiguration>;
 }
 
 export interface InferenceSettingsUpdate {
-  provider?: 'local' | 'openai';
+  provider?: 'local' | 'openai' | 'gemini';
   apiKey?: string;
   endpoint?: string;
   model?: string;
