@@ -1,20 +1,67 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# SignalZero Local Chat (Frontend)
 
-# Run and deploy your AI Studio app
+SignalZero Local Chat is the visual interface for the **SignalZero Kernel**. It provides a rich, interactive environment for engaging with the recursive symbolic system, managing projects, visualizing reasoning traces, and configuring the kernel.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1Ew3Dqim80UI-89D_5TF0GHFoXarUAQ5e
+*   **Interactive Chat Interface:** Engage with the kernel, view streaming responses, and interact with tool outputs.
+*   **Symbolic Visualization:** Explore domain symbols, their relationships, and metadata through dedicated panels.
+*   **Trace Inspector:** Visualize the reasoning steps and tool executions (traces) behind each response.
+*   **Project Management:**
+    *   **Export/Import:** Save and load your entire project state (domains, symbols, tests, loops) as `.szproject` files.
+    *   **Sample Project:** Includes a built-in sample project to get started quickly.
+*   **System Configuration:**
+    *   **Setup Wizard:** Guided first-run experience to set up admin credentials and AI models.
+    *   **Model Switching:** Easily switch between Local (Llama 3), OpenAI, and Gemini inference providers.
+    *   **Connection Settings:** Configure Redis and ChromaDB connections directly from the UI.
+*   **Security:** Secure login screen with token-based authentication.
 
-## Run Locally
+## Prerequisites
 
-**Prerequisites:**  Node.js
+*   **Node.js** (v18 or higher)
+*   **SignalZero Kernel** (LocalNode) running on `http://localhost:3001` (default)
 
+## Setup & Installation
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
+
+2.  **Configuration**
+    The application defaults to connecting to the kernel at `http://localhost:3001`. You can configure this via the UI if your setup differs.
+
+3.  **Run Development Server**
+    ```bash
+    npm run dev
+    ```
+    Access the app at `http://localhost:3000`.
+
+4.  **Build for Production**
+    ```bash
+    npm run build
+    ```
+    The build artifacts will be in the `dist` directory.
+
+## First Run
+
+When you launch the application for the first time (or after clearing the database), you will be presented with the **System Initialization** wizard:
+
+1.  **License Agreement:** You must accept the **CC BY-NC 4.0** license (Non-Commercial Use).
+2.  **Admin Account:** Create a secure username and password for the system.
+3.  **AI Model:** Configure your primary inference provider (Local, OpenAI, or Gemini).
+4.  **Sample Project:** Optionally load the included sample project to explore SignalZero's capabilities immediately.
+
+## Usage Guide
+
+*   **Chat:** Use the main chat window to query the system. Use `@` to reference symbols or domains contextually.
+*   **Forge (Symbol Dev):** Create and edit symbols manually. Define patterns, invariants, and activation conditions.
+*   **Store (Registry):** Browse and search the entire symbol registry across all domains.
+*   **Loops:** Manage background autonomous loops that run on defined schedules.
+*   **Tests:** Create and run regression tests to ensure your symbolic system behaves as expected.
+
+## License
+
+**Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)**
+
+Commercial use of this software is strictly prohibited under this license. To obtain a license for commercial use, please contact: `klietus@gmail.com`.
