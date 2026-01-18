@@ -163,6 +163,24 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
              >
                  <Plus size={14} /> New Project
              </button>
+             <button
+                onClick={async () => {
+                    if (confirm("This will overwrite your current project. Load Sample?")) {
+                        try {
+                            const res = await fetch('/signalzero_sample.szproject');
+                            if (!res.ok) throw new Error("Sample file not found");
+                            const blob = await res.blob();
+                            const file = new File([blob], "signalzero_sample.szproject", { type: "application/zip" });
+                            await onImportProject(file);
+                        } catch (e) {
+                            alert("Failed to load sample: " + String(e));
+                        }
+                    }
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-mono font-bold transition-colors"
+             >
+                 <Package size={14} /> Load Sample
+             </button>
              <button 
                 onClick={handleImportClick}
                 disabled={isImporting}

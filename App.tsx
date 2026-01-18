@@ -18,6 +18,8 @@ import { ProjectScreen } from './components/screens/ProjectScreen';
 import { ContextScreen } from './components/screens/ContextScreen';
 import { HelpScreen } from './components/screens/HelpScreen';
 import { ServerConnectScreen } from './components/screens/ServerConnectScreen';
+import { LoginScreen } from './components/screens/LoginScreen';
+import { SetupScreen } from './components/screens/SetupScreen';
 import { LoopsScreen } from './components/screens/LoopsScreen';
 
 import { sendMessage, stopMessage, setSystemPrompt, getSystemPrompt } from './services/gemini';
@@ -25,6 +27,7 @@ import { domainService } from './services/domainService';
 import { projectService } from './services/projectService';
 import { testService } from './services/testService';
 import { isApiUrlConfigured, validateApiConnection } from './services/config';
+import { apiFetch } from './services/api';
 import { traceService } from './services/traceService';
 import { contextService } from './services/contextService';
 
@@ -160,9 +163,50 @@ function App() {
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const [isServerConnected, setIsServerConnected] = useState(isApiUrlConfigured());
 
+  // Auth State
+  const [appState, setAppState] = useState<'checking' | 'setup' | 'login' | 'app'>('checking');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+        if (!isServerConnected) return;
+
+        try {
+            const res = await apiFetch('/auth/status');
+            if (res.ok) {
+                const data = await res.json();
+                if (!data.initialized) {
+                    setAppState('setup');
+                } else if (!data.authenticated) {
+                    setAppState('login');
+                } else {
+                    setAppState('app');
+                }
+            } else {
+                // Fallback for older servers or non-auth
+                setAppState('app');
+            }
+        } catch (e) {
+            console.warn("Auth check failed", e);
+            // If auth check fails (e.g. 401 on status? shouldn't happen as status is public),
+            // or network error. If network error, main polling will catch it.
+            // But let's assume 'app' to not block if endpoint missing.
+            setAppState('app');
+        }
+    };
+    
+    checkAuth();
+  }, [isServerConnected]);
+
+  const handleAuthSuccess = (token: string, userInfo: any) => {
+      if (userInfo && userInfo.name) {
+          setUser(prev => ({ ...prev, name: userInfo.name }));
+      }
+      setAppState('app');
+  };
 
   const handleScroll = () => {
       if (scrollContainerRef.current) {
@@ -413,16 +457,29 @@ function App() {
       title, icon, currentView, onNavigate: setCurrentView, onToggleTrace: () => setIsTracePanelOpen(prev => !prev), isTraceOpen: isTracePanelOpen, onOpenSettings: () => setIsSettingsOpen(true), projectName: projectMeta.name
   });
 
+  const handleImportProject = async (file: File) => {
+      try {
+          const result = await projectService.import(file);
+          setActiveSystemPrompt(result.systemPrompt);
+          setImportStats(result.stats);
+          
+          const meta = await projectService.getActive();
+          if (meta) setProjectMeta(meta);
+          
+          await setSystemPrompt(result.systemPrompt);
+      } catch (e) {
+          console.error("Import failed", e);
+          alert("Failed to import project: " + String(e));
+          throw e;
+      }
+  };
+
   const handleLogout = () => {
       setUser(defaultUser);
       setActiveContextId(null);
       setMessageHistory({});
       setCurrentView('context'); // Go to splash
   };
-
-  if (!isServerConnected) {
-    return <ServerConnectScreen onConnect={() => setIsServerConnected(true)} />; 
-  }
 
   // Hydrate project meta
   useEffect(() => {
@@ -439,6 +496,26 @@ function App() {
       }
   }, [currentView, isServerConnected]);
 
+  if (!isServerConnected) {
+    return <ServerConnectScreen onConnect={() => setIsServerConnected(true)} />; 
+  }
+
+  if (appState === 'checking') {
+      return (
+        <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 text-emerald-600 dark:text-emerald-500">
+            <Loader2 className="animate-spin" size={32} />
+        </div>
+      );
+  }
+
+  if (appState === 'setup') {
+      return <SetupScreen onSetupComplete={handleAuthSuccess} />;
+  }
+
+  if (appState === 'login') {
+      return <LoginScreen onLoginSuccess={handleAuthSuccess} />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100">
         {/* Left Panel */}
@@ -454,7 +531,7 @@ function App() {
 
         <div className="flex-1 flex flex-col min-w-0">
             {currentView === 'context' ? (
-                <ContextScreen onNewProject={() => {}} onImportProject={async () => {}} onHelp={() => setCurrentView('help')} />
+                <ContextScreen onNewProject={() => {}} onImportProject={handleImportProject} onHelp={() => setCurrentView('help')} />
             ) : currentView === 'project' ? (
                 <ProjectScreen 
                     headerProps={getHeaderProps('Project')} 
@@ -463,7 +540,7 @@ function App() {
                     systemPrompt={activeSystemPrompt} 
                     onSystemPromptChange={(val) => { setActiveSystemPrompt(val); setSystemPrompt(val); }} 
                     onClearChat={() => {}} 
-                    onImportProject={async () => {}} 
+                    onImportProject={handleImportProject} 
                     onNewProject={() => {}} 
                 />
             ) : currentView === 'dev' ? (

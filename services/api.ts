@@ -2,10 +2,10 @@ import { getApiUrl } from './config';
 import { logger } from './logger';
 
 export const getHeaders = () => {
-    const key = localStorage.getItem('signalzero_api_key') || '';
+    const token = localStorage.getItem('signalzero_auth_token') || '';
     return {
         'Content-Type': 'application/json',
-        'x-api-key': key
+        'x-auth-token': token
     };
 };
 
