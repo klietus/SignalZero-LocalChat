@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Save, Loader2 } from 'lucide-react';
+import { Shield, Save, Loader2, FileText } from 'lucide-react';
 import { apiFetch } from '../../services/api';
 import { projectService } from '../../services/projectService';
 
@@ -8,6 +8,9 @@ interface SetupScreenProps {
 }
 
 export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => {
+    // License
+    const [licenseAccepted, setLicenseAccepted] = useState(false);
+
     // Admin Account
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -38,6 +41,10 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
     };
 
     const handleSetup = async () => {
+        if (!licenseAccepted) {
+            setError("You must accept the license agreement to proceed.");
+            return;
+        }
         if (!username || !password) {
             setError("Username and password are required.");
             return;
@@ -117,16 +124,16 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                         </p>
                         <div className="space-y-4">
                             <div className="flex items-center gap-3 text-xs font-mono text-emerald-300">
-                                <div className="w-6 h-6 rounded-full bg-emerald-800 flex items-center justify-center">1</div>
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${licenseAccepted ? 'bg-emerald-500 text-white' : 'bg-emerald-800'}`}>1</div>
+                                <span>Accept License</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs font-mono text-emerald-300">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${username && password ? 'bg-emerald-500 text-white' : 'bg-emerald-800'}`}>2</div>
                                 <span>Secure Admin Account</span>
                             </div>
                             <div className="flex items-center gap-3 text-xs font-mono text-emerald-300">
-                                <div className="w-6 h-6 rounded-full bg-emerald-800 flex items-center justify-center">2</div>
-                                <span>Configure AI Model</span>
-                            </div>
-                            <div className="flex items-center gap-3 text-xs font-mono text-emerald-300">
                                 <div className="w-6 h-6 rounded-full bg-emerald-800 flex items-center justify-center">3</div>
-                                <span>Launch Kernel</span>
+                                <span>Configure AI Model</span>
                             </div>
                         </div>
                     </div>
@@ -145,8 +152,37 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                             </div>
                         )}
 
-                        {/* Admin User */}
+                        {/* License Section */}
                         <section className="space-y-4">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 font-mono border-b border-gray-200 dark:border-gray-800 pb-2 flex items-center gap-2">
+                                <FileText size={16}/> License Agreement
+                            </h3>
+                            <div className="p-4 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg text-xs text-gray-600 dark:text-gray-400 font-mono h-32 overflow-y-auto leading-relaxed">
+                                <p className="font-bold mb-2">Creative Commons Attribution-NonCommercial 4.0 International License</p>
+                                <p className="mb-2">
+                                    Commercial use of this software is strictly prohibited under this license. 
+                                    To obtain a license for commercial use, please contact: <span className="text-emerald-600 dark:text-emerald-400">klietus@gmail.com</span>
+                                </p>
+                                <p>
+                                    By exercising the Licensed Rights, You accept and agree to be bound by the terms and conditions of this Creative Commons Attribution-NonCommercial 4.0 International Public License ("Public License"). To the extent this Public License may be interpreted as a contract, You are granted the Licensed Rights in consideration of Your acceptance of these terms and conditions.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="acceptLicense"
+                                    checked={licenseAccepted}
+                                    onChange={(e) => setLicenseAccepted(e.target.checked)}
+                                    className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                                />
+                                <label htmlFor="acceptLicense" className="text-sm font-mono text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                    I accept the terms of the license agreement
+                                </label>
+                            </div>
+                        </section>
+
+                        {/* Admin User */}
+                        <section className={`space-y-4 transition-opacity duration-200 ${!licenseAccepted ? 'opacity-50 pointer-events-none' : ''}`}>
                             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 font-mono border-b border-gray-200 dark:border-gray-800 pb-2">
                                 Administrative User
                             </h3>
@@ -184,7 +220,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                         </section>
 
                         {/* Sample Project */}
-                        <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-lg">
+                        <div className={`flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-lg transition-opacity duration-200 ${!licenseAccepted ? 'opacity-50 pointer-events-none' : ''}`}>
                             <input
                                 type="checkbox"
                                 id="loadSample"
@@ -198,7 +234,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                         </div>
 
                         {/* Inference Config */}
-                        <section className="space-y-4">
+                        <section className={`space-y-4 transition-opacity duration-200 ${!licenseAccepted ? 'opacity-50 pointer-events-none' : ''}`}>
                             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 font-mono border-b border-gray-200 dark:border-gray-800 pb-2">
                                 AI Model Configuration
                             </h3>
@@ -265,8 +301,12 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                         <div className="pt-6">
                             <button
                                 onClick={handleSetup}
-                                disabled={loading}
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95 flex items-center justify-center gap-2 font-mono"
+                                disabled={loading || !licenseAccepted}
+                                className={`w-full font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 font-mono ${
+                                    loading || !licenseAccepted
+                                        ? 'bg-gray-300 dark:bg-gray-800 text-gray-500 cursor-not-allowed shadow-none'
+                                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 active:scale-95'
+                                }`}
                             >
                                 {loading ? <Loader2 size={18} className="animate-spin" /> : <><Save size={18} /> Initialize System</>}
                             </button>
