@@ -45,7 +45,7 @@ const SymbolTag: React.FC<SymbolTagProps> = ({ id, name, onClick }) => {
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
         <span className="font-semibold">{displayId}</span>
         {name && (
-            <span className="opacity-75 hidden sm:inline-block border-l border-emerald-500/30 pl-1.5 ml-0.5 max-w-[200px] truncate">
+            <span className="opacity-75 inline-block border-l border-emerald-500/30 pl-1.5 ml-0.5 max-w-[200px] truncate">
                 {name}
             </span>
         )}
@@ -71,7 +71,6 @@ const DomainTag: React.FC<DomainTagProps> = ({ id, name, onClick }) => {
         className="inline-flex items-center gap-1.5 px-1.5 py-0.5 mx-0.5 rounded-md text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors font-mono text-[10px] md:text-xs cursor-pointer select-none align-middle shadow-sm"
         title={`Domain: ${displayName}`}
     >
-        <Globe size={10} className="text-indigo-500 flex-shrink-0" />
         <span className="font-semibold">{displayName}</span>
     </button>
   );
@@ -377,10 +376,30 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
             }`}>
             
             {/* Header / Meta Controls */}
-            {isUser && message.metadata?.attachments && message.metadata.attachments.length > 0 && (
-                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/20 text-xs font-mono opacity-90">
-                    <Paperclip size={12} />
-                    <span>{message.metadata.attachments.length} Attachment{message.metadata.attachments.length !== 1 ? 's' : ''}</span>
+            {isUser && (
+                <div className={`flex items-center gap-2 mb-2 pb-2 border-b border-white/20 w-full ${message.metadata?.attachments && message.metadata.attachments.length > 0 ? 'justify-between' : 'justify-end'}`}>
+                    {message.metadata?.attachments && message.metadata.attachments.length > 0 && (
+                        <div className="flex items-center gap-2 text-xs font-mono opacity-90">
+                            <Paperclip size={12} />
+                            <span>{message.metadata.attachments.length} Attachment{message.metadata.attachments.length !== 1 ? 's' : ''}</span>
+                        </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => onRetry && onRetry(message.content)}
+                            className="p-1 rounded text-indigo-200 hover:text-white hover:bg-white/10 transition-colors"
+                            title="Retry message"
+                        >
+                            <RotateCcw size={14} />
+                        </button>
+                        <button
+                            onClick={handleCopy}
+                            className={`p-1 rounded transition-colors ${copyLabel === 'Copied' ? 'text-white' : 'text-indigo-200 hover:text-white hover:bg-white/10'}`}
+                            title={copyLabel}
+                        >
+                            <Copy size={14} />
+                        </button>
+                    </div>
                 </div>
             )}
 
