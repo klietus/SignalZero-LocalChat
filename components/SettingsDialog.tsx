@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, LogOut, Shield, Database, Server, Network, Lock, Cpu, Cloud } from 'lucide-react';
+import { X, Save, LogOut, Shield, Database, Server, Network, Lock, Cpu, Cloud, Search } from 'lucide-react';
 import { UserProfile } from '../types';
 import { getApiUrl, setApiUrl } from '../services/config';
 import { settingsService } from '../services/settingsService';
@@ -25,6 +25,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [chromaHost, setChromaHost] = useState('');
   const [chromaPort, setChromaPort] = useState('');
   const [chromaCollection, setChromaCollection] = useState('');
+  
+  // Google Search State
+  const [googleSearchKey, setGoogleSearchKey] = useState('');
+  const [googleSearchCx, setGoogleSearchCx] = useState('');
   
   // Inference State
   const [inferenceProvider, setInferenceProvider] = useState<'local' | 'openai' | 'gemini'>('local');
@@ -73,6 +77,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     const redis = settings.redis || {};
     const chroma = settings.chroma || {};
     const inference = settings.inference || {};
+    const googleSearch = settings.googleSearch || {};
 
     setRedisHost(redis.server || redis.redisServer || '');
     setRedisPort(
@@ -87,6 +92,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     setChromaHost(host || chromaUrl);
     setChromaPort(port);
     setChromaCollection(chroma.collection || chroma.collectionName || 'signalzero');
+
+    setGoogleSearchKey(googleSearch.apiKey || '');
+    setGoogleSearchCx(googleSearch.cx || '');
 
     const provider = inference.provider || 'local';
     setInferenceProvider(provider);
@@ -172,6 +180,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
         setError(null);
         try {
             const settings = await settingsService.get();
+            console.log("[SettingsDialog] Loaded settings:", settings);
             hydrateSettings(settings);
         } catch (err) {
             console.error('Failed to load settings', err);
@@ -224,6 +233,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
             chroma: { 
                 url: chromaUrl || undefined,
                 collection: chromaCollection || undefined
+            },
+            googleSearch: {
+                apiKey: googleSearchKey || undefined,
+                cx: googleSearchCx || undefined
             },
             inference: inferencePayload
         });
@@ -398,6 +411,36 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </div>
                 <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
                     Used for vector store operations when configured for external Chroma.
+                </p>
+            </div>
+
+            {/* Google Search Configuration */}
+            <div className="space-y-2 pb-6 border-b border-gray-100 dark:border-gray-800">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono flex items-center gap-2">
+                    <Search size={14} /> Google Search (Tools)
+                </label>
+                <div className="space-y-2">
+                    <span className="text-[11px] font-mono text-gray-500 uppercase flex items-center gap-2"><Lock size={12} /> API Key</span>
+                    <input
+                        type="password"
+                        value={googleSearchKey}
+                        onChange={(e) => setGoogleSearchKey(e.target.value)}
+                        placeholder="Google Custom Search API Key"
+                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <span className="text-[11px] font-mono text-gray-500 uppercase">Search Engine ID (CX)</span>
+                    <input
+                        type="text"
+                        value={googleSearchCx}
+                        onChange={(e) => setGoogleSearchCx(e.target.value)}
+                        placeholder="e.g. a1b2c3d4e5f6g7h8i"
+                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                    />
+                </div>
+                <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
+                    Required for the system to perform web searches and grounding.
                 </p>
             </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Save, Loader2, FileText } from 'lucide-react';
+import { Shield, Save, Loader2, FileText, Search } from 'lucide-react';
 import { apiFetch } from '../../services/api';
 import { projectService } from '../../services/projectService';
 
@@ -15,6 +15,10 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+
+    // Google Search
+    const [googleSearchKey, setGoogleSearchKey] = useState('');
+    const [googleSearchCx, setGoogleSearchCx] = useState('');
 
     // Inference Settings
     const [inferenceProvider, setInferenceProvider] = useState<'local' | 'openai' | 'gemini'>('local');
@@ -72,7 +76,11 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                 body: JSON.stringify({
                     username,
                     password,
-                    inference: inferenceConfig
+                    inference: inferenceConfig,
+                    googleSearch: {
+                        apiKey: googleSearchKey,
+                        cx: googleSearchCx
+                    }
                 })
             });
 
@@ -215,6 +223,35 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                                             className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                                         />
                                     </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Search Configuration */}
+                        <section className={`space-y-4 transition-opacity duration-200 ${!licenseAccepted ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 font-mono border-b border-gray-200 dark:border-gray-800 pb-2">
+                                Search Engine Configuration
+                            </h3>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono block mb-1 flex items-center gap-2"><Search size={12}/> Google Custom Search API Key</label>
+                                    <input 
+                                        type="password" 
+                                        value={googleSearchKey}
+                                        onChange={(e) => setGoogleSearchKey(e.target.value)}
+                                        placeholder="Optional"
+                                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono block mb-1">Search Engine ID (CX)</label>
+                                    <input 
+                                        type="text" 
+                                        value={googleSearchCx}
+                                        onChange={(e) => setGoogleSearchCx(e.target.value)}
+                                        placeholder="Optional"
+                                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                    />
                                 </div>
                             </div>
                         </section>
