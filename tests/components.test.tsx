@@ -41,7 +41,9 @@ const sampleSymbol: SymbolDef = {
   failure_mode: '',
   activation_conditions: [],
   linked_patterns: [],
-  kind: 'pattern'
+  kind: 'pattern',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
 };
 
 const sampleTrace: TraceData = {

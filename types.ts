@@ -208,34 +208,40 @@ export interface SymbolFacet {
   [key: string]: any;
 }
 
-export type SymbolKind = 'pattern' | 'lattice' | 'persona';
-export type LatticeTopology = 'inductive' | 'deductive' | 'bidirectional' | 'invariant' | 'energy';
-export type LatticeClosure = 'loop' | 'branch' | 'collapse' | 'constellation' | 'synthesis';
+export type SymbolKind = 'pattern' | 'lattice' | 'persona' | 'data';
 
 export interface SymbolLatticeDef {
-    topology: LatticeTopology;
-    closure: LatticeClosure;
+    topology: 'inductive' | 'deductive' | 'bidirectional' | 'invariant' | 'energy';
+    closure: 'loop' | 'branch' | 'collapse' | 'constellation' | 'synthesis';
 }
 
 export interface SymbolPersonaDef {
     recursion_level: string;
-    function: string; // Specific function description for the persona
+    function: string;
     fallback_behavior: string[];
     linked_personas: string[];
+}
+
+export interface SymbolDataDef {
+    source: string;
+    verification: string;
+    status: string;
+    payload: Record<string, any>;
 }
 
 export interface SymbolDef {
   id: string;
   name: string;
-  kind?: SymbolKind; // defaults to 'pattern' if undefined
-  created_at?: string;
-  updated_at?: string;
+  kind?: SymbolKind; // defaults to 'pattern'
+  created_at: string;
+  updated_at: string;
   last_accessed_at?: string;
   triad: string;
   role: string;
-  macro: string; // Used for patterns
-  lattice?: SymbolLatticeDef; // Used for lattices
-  persona?: SymbolPersonaDef; // Used for personas
+  macro: string;
+  lattice?: SymbolLatticeDef;
+  persona?: SymbolPersonaDef;
+  data?: SymbolDataDef;
   activation_conditions: string[];
   symbol_domain: string;
   symbol_tag: string;

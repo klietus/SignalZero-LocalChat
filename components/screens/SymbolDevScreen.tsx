@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Plus, ChevronRight, Check, AlertTriangle, Loader2, Trash2, GitMerge, Layout, Box, ArrowRightLeft, X, User, UserCog } from 'lucide-react';
+import { Save, Plus, ChevronRight, Check, AlertTriangle, Loader2, Trash2, GitMerge, Layout, Box, ArrowRightLeft, X, User, UserCog, Database } from 'lucide-react';
 import { domainService } from '../../services/domainService';
 import { SymbolDef, SymbolFacet } from '../../types';
 import { generatePersonaConversion, generateLatticeConversion } from '../../services/gemini';
@@ -33,7 +33,9 @@ const DEFAULT_PATTERN: SymbolDef = {
         invariants: []
     },
     failure_mode: '',
-    linked_patterns: []
+    linked_patterns: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
 };
 
 const DEFAULT_LATTICE: SymbolDef = {
@@ -60,7 +62,9 @@ const DEFAULT_LATTICE: SymbolDef = {
         invariants: []
     },
     failure_mode: '',
-    linked_patterns: []
+    linked_patterns: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
 };
 
 const DEFAULT_PERSONA: SymbolDef = {
@@ -89,7 +93,40 @@ const DEFAULT_PERSONA: SymbolDef = {
         linked_personas: []
     },
     failure_mode: '',
-    linked_patterns: []
+    linked_patterns: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+};
+
+const DEFAULT_DATA: SymbolDef = {
+    id: 'NEW-DATA',
+    name: 'New Data',
+    kind: 'data',
+    triad: '⟐⛃⟐',
+    role: 'Data Store',
+    macro: '',
+    activation_conditions: [],
+    symbol_domain: 'root',
+    symbol_tag: 'data',
+    facets: {
+        function: 'store',
+        topology: 'static',
+        commit: 'persistent',
+        temporal: 'state',
+        gate: [],
+        substrate: ['data'],
+        invariants: []
+    },
+    data: {
+        source: 'manual',
+        verification: 'unverified',
+        status: 'active',
+        payload: {}
+    },
+    failure_mode: '',
+    linked_patterns: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
 };
 
 
@@ -198,6 +235,15 @@ const sanitizeForEditor = (raw: any): SymbolDef => {
         copy.persona.function = copy.persona.function || '';
         copy.persona.fallback_behavior = copy.persona.fallback_behavior || [];
         copy.persona.linked_personas = copy.persona.linked_personas || [];
+    }
+
+    // Data Specific
+    if (copy.kind === 'data') {
+        if (!copy.data) copy.data = {};
+        copy.data.source = copy.data.source || 'manual';
+        copy.data.verification = copy.data.verification || 'unverified';
+        copy.data.status = copy.data.status || 'active';
+        copy.data.payload = copy.data.payload || {};
     }
 
     return copy as SymbolDef;
@@ -310,7 +356,17 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
         members: [] as string[]
     });
 
+    // Data Payload State (Local text management for JSON editing)
+    const [payloadText, setPayloadText] = useState("{}");
+
     // --- Effects ---
+
+    // Sync Payload Text when symbol changes (external load)
+    useEffect(() => {
+        if (currentSymbol.kind === 'data' && currentSymbol.data?.payload) {
+            setPayloadText(JSON.stringify(currentSymbol.data.payload, null, 2));
+        }
+    }, [currentSymbol.id, currentSymbol.kind]); // Only reset on ID/Kind change, not every keystroke
 
     // Load Domains from Local Cache
     useEffect(() => {
@@ -434,6 +490,21 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
             ...DEFAULT_PERSONA,
             symbol_domain: selectedDomain || 'root',
             id: `${(selectedDomain || 'NEW').toUpperCase()}-PER`
+        });
+        setOriginalId(null);
+        setIsDirty(false);
+    };
+
+    const handleNewData = () => {
+        if (isDirty) {
+            if (!window.confirm("You have unsaved changes. Discard them?")) return;
+        }
+        setSaveMessage(null);
+
+        setCurrentSymbol({
+            ...DEFAULT_DATA,
+            symbol_domain: selectedDomain || 'root',
+            id: `${(selectedDomain || 'NEW').toUpperCase()}-DAT`
         });
         setOriginalId(null);
         setIsDirty(false);
@@ -654,8 +725,20 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
         setIsDirty(true);
     }
 
+    const handleDataChange = (field: string, value: any) => {
+        if (!currentSymbol.data) return;
+        setCurrentSymbol(prev => ({
+            ...prev,
+            data: {
+                ...prev.data!,
+                [field]: value
+            }
+        }));
+        setIsDirty(true);
+    }
+
     const handleArrayChange = (
-        parent: 'root' | 'facets' | 'lattice' | 'persona',
+        parent: 'root' | 'facets' | 'lattice' | 'persona' | 'data',
         field: string,
         value: string | string[]
     ) => {
@@ -675,11 +758,13 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
             handleLatticeChange(field, array);
         } else if (parent === 'persona') {
             handlePersonaChange(field, array);
+        } else if (parent === 'data') {
+            handleDataChange(field, array);
         }
     };
 
     const handleLinesArrayChange = (
-        parent: 'root' | 'lattice' | 'persona',
+        parent: 'root' | 'lattice' | 'persona' | 'data',
         field: string,
         value: string
     ) => {
@@ -689,6 +774,8 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
             handlePersonaChange(field, array);
         } else if (parent === 'lattice') {
             handleLatticeChange(field, array);
+        } else if (parent === 'data') {
+            handleDataChange(field, array);
         } else {
             handleChange(field as keyof SymbolDef, array);
         }
@@ -734,6 +821,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
     const patterns = symbolList.filter(s => !s.kind || s.kind === 'pattern');
     const lattices = symbolList.filter(s => s.kind === 'lattice');
     const personas = symbolList.filter(s => s.kind === 'persona');
+    const datas = symbolList.filter(s => s.kind === 'data');
 
     return (
         <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950 font-sans relative">
@@ -909,9 +997,53 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                             )}
                         </div>
 
+                        {/* Data List */}
+                        <div>
+                            <div className="flex items-center justify-between px-2 pb-1 mb-1 mt-4 border-b border-gray-100 dark:border-gray-800">
+                                <div className="text-[10px] font-mono font-bold uppercase text-gray-400 flex items-center gap-1">
+                                    <Database size={12} /> Data
+                                </div>
+                                <button onClick={handleNewData} className="text-gray-400 hover:text-blue-500 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="New Data">
+                                    <Plus size={12} />
+                                </button>
+                            </div>
+                            {datas.length === 0 ? (
+                                <div className="p-2 text-center text-xs text-gray-400 font-mono italic">
+                                    No data.
+                                </div>
+                            ) : (
+                                datas.map(sym => (
+                                    <div key={sym.id} className="group relative flex items-center mb-0.5">
+                                        <button
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, sym.id)}
+                                            onClick={() => handleSelectSymbol(sym.id)}
+                                            className={`w-full text-left p-2 pr-8 rounded text-xs font-mono truncate transition-colors flex items-center justify-between cursor-grab active:cursor-grabbing ${currentSymbol.id === sym.id
+                                                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                                                : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 border border-transparent'
+                                                }`}
+                                        >
+                                            <span>{sym.id}</span>
+                                            {currentSymbol.id === sym.id && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1"></div>}
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                requestDeleteSymbol(sym.id);
+                                            }}
+                                            className="absolute right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                            title="Delete Symbol"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
                     </div>
 
-                    <div className="p-4 border-t border-gray-200 dark:border-gray-800 grid grid-cols-3 gap-2">
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-800 grid grid-cols-2 gap-2">
                         <button
                             onClick={handleNewPattern}
                             className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-[10px] font-bold font-mono transition-colors"
@@ -933,6 +1065,13 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                         >
                             <Plus size={10} /> Persona
                         </button>
+                        <button
+                            onClick={handleNewData}
+                            className="flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-[10px] font-bold font-mono transition-colors"
+                            title="New Data"
+                        >
+                            <Plus size={10} /> Data
+                        </button>
                     </div>
                 </div>
 
@@ -949,7 +1088,9 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                 ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600'
                                 : currentSymbol.kind === 'persona'
                                     ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'
-                                    : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600'
+                                    : currentSymbol.kind === 'data'
+                                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
+                                        : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600'
                                 }`}>
                                 {currentSymbol.kind || 'Pattern'}
                             </span>
@@ -966,7 +1107,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                     <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 font-mono">Identity & Ontology</h3>
                                     <div className="flex items-center gap-2">
                                         {/* Convert to Lattice Button (Only for Patterns) */}
-                                        {currentSymbol.kind !== 'lattice' && currentSymbol.kind !== 'persona' && currentSymbol.id !== DEFAULT_PATTERN.id && (
+                                        {currentSymbol.kind !== 'lattice' && currentSymbol.kind !== 'persona' && currentSymbol.kind !== 'data' && currentSymbol.id !== DEFAULT_PATTERN.id && (
                                             <button
                                                 onClick={handleConvertToLattice}
                                                 disabled={isConverting}
@@ -978,7 +1119,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                         )}
 
                                         {/* Convert to Persona Button (For Patterns & Lattices) */}
-                                        {currentSymbol.kind !== 'persona' && currentSymbol.id !== DEFAULT_PATTERN.id && currentSymbol.id !== DEFAULT_LATTICE.id && (
+                                        {currentSymbol.kind !== 'persona' && currentSymbol.kind !== 'data' && currentSymbol.id !== DEFAULT_PATTERN.id && currentSymbol.id !== DEFAULT_LATTICE.id && (
                                             <button
                                                 onClick={handleConvertToPersona}
                                                 disabled={isConverting}
@@ -1166,6 +1307,76 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                                 placeholder="No linked personas"
                                             />
                                         </div>
+                                    </div>
+
+                                </section>
+                            )}
+
+                            {/* DATA SECTION */}
+                            {currentSymbol.kind === 'data' && (
+                                <section className="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-6 border border-blue-100 dark:border-blue-800/30 space-y-4">
+                                    <h3 className="text-xs font-bold uppercase tracking-widest text-blue-500 font-mono border-b border-blue-200 dark:border-blue-800/30 pb-2 mb-4 flex items-center gap-2">
+                                        <Database size={14} /> Data Definition
+                                    </h3>
+
+                                    <div className="grid grid-cols-3 gap-6">
+                                        <div className="space-y-1">
+                                            <Label>Source</Label>
+                                            <input
+                                                value={currentSymbol.data?.source || ''}
+                                                onChange={e => handleDataChange('source', e.target.value)}
+                                                className={INPUT_STYLE}
+                                                placeholder="e.g. manual, api, sensor"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label>Verification</Label>
+                                            <select
+                                                value={currentSymbol.data?.verification || 'unverified'}
+                                                onChange={e => handleDataChange('verification', e.target.value)}
+                                                className={INPUT_STYLE}
+                                            >
+                                                <option value="unverified">Unverified</option>
+                                                <option value="verified">Verified</option>
+                                                <option value="signed">Signed</option>
+                                                <option value="consensus">Consensus</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label>Status</Label>
+                                            <select
+                                                value={currentSymbol.data?.status || 'active'}
+                                                onChange={e => handleDataChange('status', e.target.value)}
+                                                className={INPUT_STYLE}
+                                            >
+                                                <option value="active">Active</option>
+                                                <option value="archived">Archived</option>
+                                                <option value="deprecated">Deprecated</option>
+                                                <option value="provisional">Provisional</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label>Payload (JSON)</Label>
+                                        <AutoResizeTextarea
+                                            value={payloadText}
+                                            onChange={(e: any) => setPayloadText(e.target.value)}
+                                            onBlur={(e: any) => {
+                                                try {
+                                                    const parsed = JSON.parse(e.target.value);
+                                                    handleDataChange('payload', parsed);
+                                                    // Re-format on blur for prettiness
+                                                    setPayloadText(JSON.stringify(parsed, null, 2));
+                                                } catch (err) {
+                                                    alert("Invalid JSON Payload. Changes not saved.");
+                                                }
+                                            }}
+                                            disabled={false}
+                                            className={`${INPUT_STYLE} font-mono text-xs`}
+                                            placeholder="{}"
+                                        />
+                                        <div className="text-[10px] text-gray-400 italic">Enter valid JSON object.</div>
                                     </div>
 
                                 </section>

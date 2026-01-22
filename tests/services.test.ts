@@ -95,8 +95,8 @@ test('config handles api url lifecycle', { concurrency: false }, async () => {
 
 test('domainService query and helpers use apiFetch', { concurrency: false }, async () => {
   const symbols: SymbolDef[] = [
-    { id: '1', name: 'Test', triad: 'T', role: 'r', symbol_domain: 'demo', symbol_tag: 'tag', facets: {} as any, failure_mode: '', activation_conditions: [], linked_patterns: [], macro: '', kind: 'pattern' },
-    { id: '2', name: 'Other', triad: 'T', role: 'r', symbol_domain: 'demo', symbol_tag: 'tag', facets: {} as any, failure_mode: '', activation_conditions: [], linked_patterns: [], macro: '', kind: 'pattern' }
+    { id: '1', name: 'Test', triad: 'T', role: 'r', symbol_domain: 'demo', symbol_tag: 'tag', facets: {} as any, failure_mode: '', activation_conditions: [], linked_patterns: [], macro: '', kind: 'pattern', created_at: '', updated_at: '' },
+    { id: '2', name: 'Other', triad: 'T', role: 'r', symbol_domain: 'demo', symbol_tag: 'tag', facets: {} as any, failure_mode: '', activation_conditions: [], linked_patterns: [], macro: '', kind: 'pattern', created_at: '', updated_at: '' }
   ];
   let called = '';
   (domainService as any).getSymbols = async () => symbols;

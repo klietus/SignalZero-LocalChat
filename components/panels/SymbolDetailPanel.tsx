@@ -95,7 +95,9 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
         activation_conditions: [],
         failure_mode: 'Registry Miss',
         linked_patterns: [],
-        macro: ''
+        macro: '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
     } as SymbolDef);
     setIsUnregistered(true);
     setLoading(false);
@@ -105,6 +107,7 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
       switch(kind) {
           case 'lattice': return <Layout size={14} className="text-purple-500" />;
           case 'persona': return <User size={14} className="text-amber-500" />;
+          case 'data': return <Database size={14} className="text-blue-500" />;
           default: return <Box size={14} className="text-indigo-500" />;
       }
   };
@@ -113,6 +116,7 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
       switch(kind) {
           case 'lattice': return 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800';
           case 'persona': return 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800';
+          case 'data': return 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800';
           default: return 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800';
       }
   };
@@ -303,6 +307,41 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                                                 </button>
                                             );
                                         })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* DATA SPECIFIC DATA */}
+                    {data.kind === 'data' && data.data && (
+                        <div className="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-4 border border-blue-100 dark:border-blue-800/30 space-y-4">
+                            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-mono text-xs uppercase font-bold border-b border-blue-200 dark:border-blue-800/30 pb-2">
+                                <Database size={12} /> Data Store
+                            </div>
+
+                             <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <span className="text-[10px] text-gray-500 uppercase font-mono">Source</span>
+                                    <div className="text-sm font-bold text-blue-800 dark:text-blue-300">{data.data.source}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] text-gray-500 uppercase font-mono">Verification</span>
+                                    <div className="text-sm font-bold text-blue-800 dark:text-blue-300">{data.data.verification}</div>
+                                </div>
+                                 <div className="space-y-1">
+                                    <span className="text-[10px] text-gray-500 uppercase font-mono">Status</span>
+                                    <div className="text-sm font-bold text-blue-800 dark:text-blue-300">{data.data.status}</div>
+                                </div>
+                            </div>
+
+                            {data.data.payload && (
+                                <div className="space-y-1">
+                                    <span className="text-[10px] text-gray-500 uppercase font-mono">Payload</span>
+                                    <div className="bg-white dark:bg-gray-950 p-2 rounded border border-gray-200 dark:border-gray-800">
+                                        <pre className="text-xs font-mono text-gray-700 dark:text-gray-300 overflow-x-auto whitespace-pre-wrap">
+                                            {JSON.stringify(data.data.payload, null, 2)}
+                                        </pre>
                                     </div>
                                 </div>
                             )}
