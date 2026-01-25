@@ -11,5 +11,11 @@ export const traceService = {
 
     const data = await res.json();
     return Array.isArray(data) ? data : [];
+  },
+
+  async get(id: string): Promise<TraceData | null> {
+      const res = await apiFetch(`/traces/${id}`);
+      if (!res.ok) return null;
+      return await res.json();
   }
 };

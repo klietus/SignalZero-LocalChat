@@ -279,10 +279,12 @@ export interface TestCase {
   name?: string;
   prompt: string;
   expectedActivations: string[];
+  expectedResponse?: string;
 }
 
 export interface TestResult {
   id: string;
+  name?: string;
   prompt: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
   signalZeroResponse?: string;
@@ -295,7 +297,12 @@ export interface TestResult {
   missingActivations?: string[];
   activationCheckPassed?: boolean;
   compareWithBaseModel?: boolean;
-  testCaseName?: string;
+  expectedResponse?: string;
+  responseMatch?: boolean;
+  responseMatchReasoning?: string;
+  baselineResponseMatch?: boolean;
+  baselineResponseMatchReasoning?: string;
+  traceIds?: string[];
 }
 
 export interface TestSet {
@@ -319,7 +326,7 @@ export interface TestRun {
   testSetId: string;
   testSetName?: string;
   compareWithBaseModel?: boolean;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'stopped' | 'cancelled';
   startTime?: string;
   endTime?: string;
   results?: TestResult[];

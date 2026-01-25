@@ -14,18 +14,21 @@ import {
   X,
   BarChart3,
   Minus,
-  Trash2
+  Trash2,
+  Copy
 } from 'lucide-react';
 import { Header, HeaderProps } from '../Header';
 import { TraceVisualizer } from '../TraceVisualizer';
 import { TestCase, TestResult, TestRun, TestSet, TraceData } from '../../types';
 import { testService } from '../../services/testService';
+import { traceService } from '../../services/traceService';
 
 interface TestRunnerScreenProps {
   headerProps: Omit<HeaderProps, 'children'>;
 }
 
-const statusColor = (status: TestRun['status'] | TestResult['status']) => {
+const statusColor = (status: TestRun['status'] | TestResult['status'], responseMatch?: boolean) => {
+  if (responseMatch === false) return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300';
   switch (status) {
     case 'completed':
       return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
@@ -65,6 +68,13 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
   const [isStartingRun, setIsStartingRun] = useState(false);
   const [pollingRunId, setPollingRunId] = useState<string | null>(null);
 
+  // Pagination State
+  const [displayedResults, setDisplayedResults] = useState<TestResult[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const PAGE_SIZE = 50;
+
   const [showSetDialog, setShowSetDialog] = useState(false);
   const [newSetName, setNewSetName] = useState('');
   const [newSetDescription, setNewSetDescription] = useState('');
@@ -73,12 +83,16 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
   const [caseName, setCaseName] = useState('');
   const [casePrompt, setCasePrompt] = useState('');
   const [caseActivations, setCaseActivations] = useState('');
+  const [caseExpectedResponse, setCaseExpectedResponse] = useState('');
   const [isSavingCase, setIsSavingCase] = useState(false);
 
   const [showRunDialog, setShowRunDialog] = useState(false);
   const [compareWithBaseModel, setCompareWithBaseModel] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'passed' | 'failed' | 'completed'>('all');
 
   const [viewingTrace, setViewingTrace] = useState<TraceData | null>(null);
+
+  const loaderRef = React.useRef<HTMLDivElement | null>(null);
 
   const selectedSet = useMemo(
     () => testSets.find(set => set.id === selectedSetId) || null,
@@ -96,6 +110,43 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
     if (runsForSet.length > 0) return runsForSet[0];
     return runs[0];
   }, [runs, runsForSet, selectedRunId]);
+
+  // Reset pagination when selected run or filter changes
+  useEffect(() => {
+      setDisplayedResults([]);
+      setOffset(0);
+      setHasMore(true);
+  }, [selectedRunId, filter]);
+
+  const loadMoreResults = async () => {
+    if (!selectedRun || !hasMore || isLoadingMore) return;
+    
+    setIsLoadingMore(true);
+    try {
+        const { results, total } = await testService.getTestRunResults(selectedRun.id, PAGE_SIZE, offset, filter);
+        
+        setDisplayedResults(prev => [...prev, ...results]);
+        setOffset(prev => prev + PAGE_SIZE);
+        setHasMore(offset + PAGE_SIZE < total);
+    } catch (e) {
+        console.error("Failed to load results", e);
+    } finally {
+        setIsLoadingMore(false);
+    }
+  };
+
+  // Intersection Observer for Infinite Scroll
+  useEffect(() => {
+      if (!loaderRef.current) return;
+      const observer = new IntersectionObserver((entries) => {
+          if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+              loadMoreResults();
+          }
+      }, { threshold: 1.0 });
+
+      observer.observe(loaderRef.current);
+      return () => observer.disconnect();
+  }, [loaderRef.current, hasMore, isLoadingMore, selectedRunId, filter]);
 
   const loadTestSets = async () => {
     setIsLoadingSets(true);
@@ -118,6 +169,23 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
     loadTestSets();
     loadRuns();
   }, []);
+
+  // Hydrate selected run when it changes (METADATA ONLY)
+  useEffect(() => {
+      if (selectedRunId && !pollingRunId) {
+          testService.getTestRun(selectedRunId, true).then(hydrated => {
+              if (hydrated) setRuns(prev => mergeRuns(prev, hydrated));
+          });
+      }
+  }, [selectedRunId, pollingRunId]);
+
+  // Auto-poll active runs (METADATA ONLY)
+  useEffect(() => {
+      const activeRun = runs.find(r => r.status === 'running');
+      if (activeRun && !pollingRunId && !isStartingRun) {
+          pollRun(activeRun.id);
+      }
+  }, [runs, pollingRunId, isStartingRun]);
 
   useEffect(() => {
     if (selectedSetId && runsForSet.length > 0) {
@@ -155,10 +223,12 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
       .split(',')
       .map(s => s.trim())
       .filter(Boolean);
+    
     const testCase: TestCase = {
       name: caseName.trim() || undefined,
       prompt: casePrompt.trim(),
-      expectedActivations: expected
+      expectedActivations: expected,
+      expectedResponse: caseExpectedResponse.trim() || undefined
     };
     await testService.addTestCase(selectedSetId, testCase);
     await loadTestSets();
@@ -166,6 +236,7 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
     setCaseName('');
     setCasePrompt('');
     setCaseActivations('');
+    setCaseExpectedResponse('');
     setIsSavingCase(false);
   };
 
@@ -177,13 +248,18 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
 
   const pollRun = async (runId: string) => {
     setPollingRunId(runId);
-    for (let i = 0; i < 60; i++) {
-      const latest = await testService.getTestRun(runId);
+    let active = true;
+    while (active) {
+      const latest = await testService.getTestRun(runId, true); // Exclude results
       if (latest) {
         setRuns(prev => mergeRuns(prev, latest));
-        if (latest.status === 'completed' || latest.status === 'failed') break;
+        if (latest.status === 'completed' || latest.status === 'failed') {
+            active = false;
+        }
+      } else {
+          active = false;
       }
-      await new Promise(res => setTimeout(res, 1000));
+      if (active) await new Promise(res => setTimeout(res, 10000));
     }
     setPollingRunId(null);
     loadRuns();
@@ -202,6 +278,58 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
     setIsStartingRun(false);
   };
 
+  const handleStopRun = async (runId: string) => {
+      await testService.stopTestRun(runId);
+      setRuns(prev => prev.map(r => r.id === runId ? { ...r, status: 'failed' } : r));
+  };
+
+  const handleResumeRun = async (runId: string) => {
+      await testService.resumeTestRun(runId);
+      pollRun(runId);
+  };
+
+  const handleDeleteRun = async (runId: string, e?: React.MouseEvent) => {
+      if (e) e.stopPropagation();
+      if (!window.confirm("Delete this test run history?")) return;
+      
+      await testService.deleteTestRun(runId);
+      setRuns(prev => prev.filter(r => r.id !== runId));
+      if (selectedRunId === runId) {
+          setSelectedRunId(null);
+          setView('history');
+      }
+  };
+
+  const handleRerunTestCase = async (runId: string, caseId: string) => {
+      setDisplayedResults(prev => prev.map(res => res.id === caseId ? { ...res, status: 'running' } : res));
+      await testService.rerunTestCase(runId, caseId);
+      if (!pollingRunId) pollRun(runId);
+  };
+
+  const handleViewTrace = async (traceId: string) => {
+      const trace = await traceService.get(traceId);
+      if (trace) setViewingTrace(trace);
+  };
+
+  const handleCopyResult = (result: TestResult) => {
+      const parts = [
+          `PROMPT:\n${result.prompt}`,
+          `\nSIGNALZERO RESPONSE:\n${result.signalZeroResponse || 'N/A'}`,
+          `\nEXPECTED RESPONSE:\n${result.expectedResponse || 'N/A'}`,
+      ];
+
+      if (result.evaluation?.overall_reasoning) {
+          parts.push(`\nANALYSIS OF DIFFERENCE:\n${result.evaluation.overall_reasoning}`);
+      }
+
+      if (result.responseMatchReasoning) {
+          parts.push(`\nMATCH REASONING:\n${result.responseMatchReasoning}`);
+      }
+
+      navigator.clipboard.writeText(parts.join('\n---\n'));
+      alert("Test result copied to clipboard!");
+  };
+
   const activationStats = (result: TestResult) => {
     const expected = result.expectedActivations ||
       selectedSet?.tests.find(t => t.id === result.id || t.prompt === result.prompt)?.expectedActivations ||
@@ -211,9 +339,9 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
     return { expected, missing, passedCount };
   };
 
-  const runStatusBadge = (status: TestRun['status'] | TestResult['status']) => (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusColor(status)}`}>
-      {status}
+  const runStatusBadge = (status: TestRun['status'] | TestResult['status'], responseMatch?: boolean) => (
+    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusColor(status, responseMatch)}`}>
+      {responseMatch === false ? 'failed' : status}
     </span>
   );
 
@@ -308,6 +436,12 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
                   onChange={(e) => setCaseActivations(e.target.value)}
                   className="w-full text-sm px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
                 />
+                <textarea
+                  placeholder="Expected Response (for semantic match check)"
+                  value={caseExpectedResponse}
+                  onChange={(e) => setCaseExpectedResponse(e.target.value)}
+                  className="w-full text-sm px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 min-h-[60px]"
+                />
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={() => setShowCaseForm(false)}
@@ -378,23 +512,31 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
                 <div className="text-sm text-gray-500">No runs found for this test set.</div>
               ) : (
                 runsForSet.map(run => (
-                  <button
-                    key={run.id}
-                    onClick={() => { setSelectedRunId(run.id); setView('results'); }}
-                    className="w-full text-left bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {runStatusBadge(run.status)}
-                        <span className="text-xs text-gray-500">{run.testSetName || 'Untitled Set'}</span>
-                      </div>
-                      <div className="text-[11px] text-gray-500">{formatDate(run.startTime)}</div>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-700 dark:text-gray-200">
-                      <div className="flex items-center gap-1"><Rocket size={14} className="text-indigo-500" /> {run.summary?.completed || 0}/{run.summary?.total || run.results?.length || 0} completed</div>
-                      {run.compareWithBaseModel && <div className="flex items-center gap-1 text-amber-600 dark:text-amber-300"><Sparkles size={14} /> Base model comparison</div>}
-                    </div>
-                  </button>
+                  <div key={run.id} className="relative group">
+                    <button
+                        onClick={() => { setSelectedRunId(run.id); setView('results'); }}
+                        className="w-full text-left bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors pr-10"
+                    >
+                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                            {runStatusBadge(run.status)}
+                            <span className="text-xs text-gray-500">{run.testSetName || 'Untitled Set'}</span>
+                        </div>
+                        <div className="text-[11px] text-gray-500">{formatDate(run.startTime)}</div>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-gray-700 dark:text-gray-200">
+                        <div className="flex items-center gap-1"><Rocket size={14} className="text-indigo-500" /> {run.summary?.completed || 0}/{run.summary?.total || run.results?.length || 0} completed</div>
+                        {run.compareWithBaseModel && <div className="flex items-center gap-1 text-amber-600 dark:text-amber-300"><Sparkles size={14} /> Base model comparison</div>}
+                        </div>
+                    </button>
+                    <button 
+                        onClick={(e) => handleDeleteRun(run.id, e)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Delete Run"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                  </div>
                 ))
               )}
             </div>
@@ -410,51 +552,93 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
                           <Sparkles size={12} /> Base model comparison
                         </span>
                       )}
+                      {selectedRun.status === 'running' && (
+                          <button onClick={() => handleStopRun(selectedRun.id)} className="text-xs text-rose-500 hover:underline">Stop</button>
+                      )}
+                      {(selectedRun.status === 'stopped' || selectedRun.status === 'failed') && (
+                          <button onClick={() => handleResumeRun(selectedRun.id)} className="text-xs text-emerald-500 hover:underline">Resume</button>
+                      )}
                     </div>
                     <p className="text-sm text-gray-700 dark:text-gray-200">{selectedRun.testSetName || 'Test Run'}</p>
                     <p className="text-xs text-gray-500">Started {formatDate(selectedRun.startTime)} • Ended {formatDate(selectedRun.endTime)}</p>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-xs">
-                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                    <button 
+                        onClick={() => setFilter('all')}
+                        className={`p-2 rounded border transition-all ${filter === 'all' ? 'bg-gray-100 border-gray-300 dark:bg-gray-800 dark:border-gray-600 ring-2 ring-indigo-500/20' : 'bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    >
                       <div className="text-[10px] uppercase text-gray-500">Total</div>
                       <div className="text-lg font-bold text-gray-800 dark:text-gray-100">{selectedRun.summary?.total ?? selectedRun.results?.length ?? 0}</div>
-                    </div>
-                    <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded border border-emerald-100 dark:border-emerald-800">
+                    </button>
+                    <button 
+                        onClick={() => setFilter('passed')}
+                        className={`p-2 rounded border transition-all ${filter === 'passed' ? 'bg-emerald-100 border-emerald-300 dark:bg-emerald-900/40 dark:border-emerald-700 ring-2 ring-emerald-500/20' : 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'}`}
+                    >
                       <div className="text-[10px] uppercase text-emerald-700 dark:text-emerald-200">Passed</div>
-                      <div className="text-lg font-bold text-emerald-700 dark:text-emerald-200">{selectedRun.summary?.passed ?? 0}</div>
-                    </div>
-                    <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-100 dark:border-amber-800">
-                      <div className="text-[10px] uppercase text-amber-700 dark:text-amber-200">Completed</div>
-                      <div className="text-lg font-bold text-amber-700 dark:text-amber-200">{selectedRun.summary?.completed ?? selectedRun.results?.length ?? 0}</div>
-                    </div>
-                    <div className="p-2 bg-rose-50 dark:bg-rose-900/20 rounded border border-rose-100 dark:border-rose-800">
+                      <div className="text-lg font-bold text-emerald-700 dark:text-emerald-200">
+                        {selectedRun.summary?.passed ?? 0}
+                        {selectedRun.summary?.completed ? <span className="text-[10px] ml-1 font-normal opacity-60">({Math.round(((selectedRun.summary.passed ?? 0) / selectedRun.summary.completed) * 100)}%)</span> : null}
+                      </div>
+                    </button>
+                    <button 
+                        onClick={() => setFilter('completed')}
+                        className={`p-2 rounded border transition-all ${filter === 'completed' ? 'bg-amber-100 border-amber-300 dark:bg-amber-900/40 dark:border-amber-700 ring-2 ring-amber-500/20' : 'bg-amber-50 border-amber-100 dark:bg-amber-900/20 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30'}`}
+                    >
+                      <div className="text-[10px] uppercase text-amber-700 dark:text-amber-200">Progress</div>
+                      <div className="text-lg font-bold text-amber-700 dark:text-amber-200">
+                        {selectedRun.summary?.completed ?? 0}
+                        {selectedRun.summary?.total ? <span className="text-[10px] ml-1 font-normal opacity-60">({Math.round(((selectedRun.summary.completed ?? 0) / selectedRun.summary.total) * 100)}%)</span> : null}
+                      </div>
+                    </button>
+                    <button 
+                        onClick={() => setFilter('failed')}
+                        className={`p-2 rounded border transition-all ${filter === 'failed' ? 'bg-rose-100 border-rose-300 dark:bg-rose-900/40 dark:border-rose-700 ring-2 ring-rose-500/20' : 'bg-rose-50 border-rose-100 dark:bg-rose-900/20 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/30'}`}
+                    >
                       <div className="text-[10px] uppercase text-rose-700 dark:text-rose-200">Failed</div>
-                      <div className="text-lg font-bold text-rose-700 dark:text-rose-200">{selectedRun.summary?.failed ?? 0}</div>
-                    </div>
+                      <div className="text-lg font-bold text-rose-700 dark:text-rose-200">
+                        {selectedRun.summary?.failed ?? 0}
+                        {selectedRun.summary?.completed ? <span className="text-[10px] ml-1 font-normal opacity-60">({Math.round(((selectedRun.summary.failed ?? 0) / selectedRun.summary.completed) * 100)}%)</span> : null}
+                      </div>
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {(selectedRun.results || []).map((result) => {
+              {displayedResults.map((result) => {
                 const { expected, missing, passedCount } = activationStats(result);
-                const relatedTrace = result.traces?.[0];
                 return (
                   <div key={result.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden">
                     <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          {runStatusBadge(result.status)}
-                          <span className="text-xs text-gray-500">{result.testCaseName || result.id}</span>
+                          {runStatusBadge(result.status, result.responseMatch)}
+                          <span className="text-xs text-gray-500">{result.name || result.id}</span>
                         </div>
                         <p className="text-sm font-bold text-gray-800 dark:text-gray-100 mt-1">{result.prompt}</p>
                       </div>
                       <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => handleCopyResult(result)}
+                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-indigo-600 transition-colors"
+                            title="Copy result details"
+                        >
+                            <Copy size={14} />
+                        </button>
+                        {result.status === 'failed' && (
+                            <button
+                                onClick={() => handleRerunTestCase(selectedRun.id, result.id)}
+                                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-indigo-600 transition-colors"
+                                title="Rerun this case"
+                            >
+                                <Play size={14} />
+                            </button>
+                        )}
                         <div className="flex items-center gap-1 px-2 py-1 rounded bg-gray-50 dark:bg-gray-800 text-[11px] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
                           <BarChart3 size={14} /> {passedCount}/{expected.length} activations
                         </div>
-                        {relatedTrace && (
+                        {result.traceIds && result.traceIds.length > 0 && (
                           <button
-                            onClick={() => setViewingTrace(relatedTrace)}
+                            onClick={() => handleViewTrace(result.traceIds![0])}
                             className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700"
                           >
                             View Trace
@@ -482,6 +666,22 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
                       </div>
 
                       <div className="space-y-3">
+                        {result.expectedResponse && (
+                          <div className={`rounded border p-3 ${result.responseMatch ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800'}`}>
+                            <div className="flex items-center gap-2 mb-2">
+                              {result.responseMatch ? <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" /> : <AlertTriangle size={14} className="text-rose-600 dark:text-rose-400" />}
+                              <p className={`text-[10px] uppercase font-bold ${result.responseMatch ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>Response Match</p>
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-300 mb-2">
+                              <span className="font-bold text-[10px] uppercase text-gray-400">Expected:</span>
+                              <div className="mt-1 pl-2 border-l-2 border-gray-300 dark:border-gray-700 whitespace-pre-wrap">{result.expectedResponse}</div>
+                            </div>
+                            {result.responseMatchReasoning && (
+                              <p className="text-[11px] italic text-gray-500">{result.responseMatchReasoning}</p>
+                            )}
+                          </div>
+                        )}
+
                         <div className="bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-3">
                           <p className="text-[10px] uppercase text-gray-500 font-bold mb-2">Expected Activations</p>
                           <div className="flex flex-wrap gap-1">
@@ -512,13 +712,21 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
                                 <p>Symbolic Depth: {result.evaluation.sz.symbolic_depth}</p>
                               </div>
                               <div className="p-2 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-                                <p className="font-bold text-gray-700 dark:text-gray-200 mb-1">Base</p>
+                                <p className="font-bold text-gray-700 dark:text-gray-200 mb-1 flex items-center gap-1">
+                                    Base
+                                    {result.baselineResponseMatch !== undefined && (
+                                        result.baselineResponseMatch ? <CheckCircle2 size={12} className="text-emerald-500" /> : <AlertTriangle size={12} className="text-rose-500" />
+                                    )}
+                                </p>
                                 <p>Alignment: {result.evaluation.base.alignment_score}</p>
                                 <p>Reasoning: {result.evaluation.base.reasoning_depth}</p>
                                 <p>Symbolic Depth: {result.evaluation.base.symbolic_depth}</p>
                               </div>
                             </div>
                             <p className="text-[11px] text-gray-500 mt-2">{result.evaluation.overall_reasoning}</p>
+                            {result.baselineResponseMatchReasoning && (
+                                <p className="text-[10px] text-gray-400 mt-1 italic">Base Logic: {result.baselineResponseMatchReasoning}</p>
+                            )}
                           </div>
                         )}
                       </div>
@@ -527,9 +735,24 @@ export const TestRunnerScreen: React.FC<TestRunnerScreenProps> = ({ headerProps 
                 );
               })}
 
-              {(selectedRun.results || []).length === 0 && (
+              {/* Infinite Scroll Loader */}
+              <div ref={loaderRef} className="py-8 flex justify-center">
+                  {isLoadingMore && (
+                      <div className="flex items-center gap-2 text-gray-500 text-sm">
+                          <Loader2 size={20} className="animate-spin" />
+                          Loading more results...
+                      </div>
+                  )}
+                  {!hasMore && displayedResults.length > 0 && (
+                      <div className="text-gray-400 text-xs uppercase tracking-widest font-bold">
+                          End of Results
+                      </div>
+                  )}
+              </div>
+
+              {displayedResults.length === 0 && !isLoadingMore && (
                 <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 text-center text-gray-500">
-                  No test results available for this run yet.
+                  {filter === 'all' ? 'No test results available for this run yet.' : `No ${filter} test results found.`}
                 </div>
               )}
             </div>

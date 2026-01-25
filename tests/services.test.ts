@@ -55,7 +55,7 @@ beforeEach(() => {
 });
 
 test('apiFetch normalizes paths and sends headers', { concurrency: false }, async () => {
-  storage.setItem('signalzero_api_key', 'abc');
+  storage.setItem('signalzero_auth_token', 'abc');
   storage.setItem('signalzero_api_url', 'http://api.test');
   let receivedUrl = '';
   let receivedHeaders: any = {};
@@ -70,7 +70,7 @@ test('apiFetch normalizes paths and sends headers', { concurrency: false }, asyn
 
   const res = await apiFetch('domains', { method: 'POST', body: JSON.stringify({ id: '1' }), skipLog: true });
   assert.equal(receivedUrl, 'http://api.test/domains');
-  assert.equal(receivedHeaders['x-api-key'], 'abc');
+  assert.equal(receivedHeaders['x-auth-token'], 'abc');
   assert.equal(receivedMethod, 'POST');
   assert.equal(res.ok, true);
 });

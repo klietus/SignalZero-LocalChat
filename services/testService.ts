@@ -1,5 +1,5 @@
 import { apiFetch } from './api';
-import { TestCase, TestRun, TestSet } from '../types';
+import { TestCase, TestRun, TestSet, TestResult } from '../types';
 
 const generateTestSetId = (name: string) => {
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -61,6 +61,22 @@ export const testService = {
     return data.runId || null;
   },
 
+  async stopTestRun(runId: string): Promise<void> {
+      await apiFetch(`/tests/runs/${runId}/stop`, { method: 'POST' });
+  },
+
+  async resumeTestRun(runId: string): Promise<void> {
+      await apiFetch(`/tests/runs/${runId}/resume`, { method: 'POST' });
+  },
+
+  async rerunTestCase(runId: string, caseId: string): Promise<void> {
+      await apiFetch(`/tests/runs/${runId}/cases/${caseId}/rerun`, { method: 'POST' });
+  },
+
+  async deleteTestRun(runId: string): Promise<void> {
+      await apiFetch(`/tests/runs/${runId}`, { method: 'DELETE' });
+  },
+
   async listTestRuns(): Promise<TestRun[]> {
     try {
         const res = await apiFetch('/tests/runs');
@@ -71,11 +87,15 @@ export const testService = {
     }
   },
 
-  async getTestRun(id: string): Promise<TestRun | null> {
-    const res = await apiFetch(`/tests/runs/${id}`);
-    if (!res.ok) return null;
-    return await res.json();
-  },
+    getTestRun: async (id: string, excludeResults: boolean = false): Promise<TestRun> => {
+        const res = await apiFetch(`/tests/runs/${id}${excludeResults ? '?excludeResults=true' : ''}`);
+        return await res.json();
+    },
+
+    getTestRunResults: async (runId: string, limit: number = 50, offset: number = 0, status?: string): Promise<{ results: TestResult[], total: number }> => {
+        const res = await apiFetch(`/tests/runs/${runId}/results?limit=${limit}&offset=${offset}${status ? `&status=${status}` : ''}`);
+        return await res.json();
+    },
 
   async clearTests(): Promise<void> {
     const sets = await this.listTestSets();
