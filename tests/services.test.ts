@@ -11,16 +11,7 @@ import { vectorService } from '../services/vectorService.js';
 import { logger } from '../services/logger.js';
 import { SymbolDef, TestCase, TraceData, VectorSearchResult, ProjectMeta, TestSet } from '../types.js';
 
-class MemoryStorage {
-  private store = new Map<string, string>();
-  getItem(key: string) { return this.store.get(key) ?? null; }
-  setItem(key: string, value: string) { this.store.set(key, value); }
-  removeItem(key: string) { this.store.delete(key); }
-  clear() { this.store.clear(); }
-}
-
-const storage = new MemoryStorage();
-(globalThis as any).localStorage = storage;
+const storage = (globalThis as any).localStorage;
 (globalThis as any).FileReader = class {
   result: string | null = null;
   onload: ((ev: any) => void) | null = null;
