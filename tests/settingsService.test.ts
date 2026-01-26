@@ -7,7 +7,7 @@ test('settingsService fetches settings', { concurrency: false }, async () => {
     (globalThis as any).fetch = async () => new Response(JSON.stringify(mockSettings));
     
     const settings = await settingsService.get();
-    assert.equal(settings.inference.provider, 'openai');
+    assert.equal(settings.inference!.provider, 'openai');
 });
 
 test('settingsService updates settings', { concurrency: false }, async () => {
