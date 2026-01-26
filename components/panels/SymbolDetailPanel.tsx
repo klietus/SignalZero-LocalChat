@@ -123,11 +123,42 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
 
   // Safe renderer for potential object items in array
   const safeRenderItem = (item: any) => {
-      if (typeof item === 'object') {
+      if (item && typeof item === 'object') {
+          if ('id' in item && 'link_type' in item) {
+              return `${item.id} (${item.link_type}${item.bidirectional ? ', bidirectional' : ''})`;
+          }
           return item.id || JSON.stringify(item);
       }
       return String(item);
   }
+
+  const renderLinkItem = (link: any, index: number, colorClass: string, icon: React.ReactNode) => {
+      const linkId = typeof link === 'string' ? link : link.id;
+      const linkType = typeof link === 'object' ? link.link_type : 'relates_to';
+      const isBi = typeof link === 'object' ? link.bidirectional : false;
+
+      return (
+          <li key={index} className="flex items-center justify-between group">
+              <div className="flex items-center gap-2">
+                  <div className={`w-5 h-5 rounded-full ${colorClass} flex items-center justify-center text-[10px] font-bold font-mono`}>
+                      {index + 1}
+                  </div>
+                  <button 
+                      onClick={() => onSymbolClick && onSymbolClick(linkId)}
+                      className="text-xs font-mono text-gray-700 dark:text-gray-300 hover:text-indigo-500 transition-colors"
+                  >
+                      {linkId}
+                  </button>
+              </div>
+              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-200 dark:border-gray-700">
+                      {linkType}
+                  </span>
+                  {isBi && <GitBranch size={10} className="text-emerald-500" />}
+              </div>
+          </li>
+      );
+  };
 
   return (
     <>
@@ -239,23 +270,8 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                             {data.linked_patterns && data.linked_patterns.length > 0 && (
                                 <div>
                                     <span className="text-[10px] text-gray-500 uppercase font-mono mb-2 block">Lattice Members</span>
-                                    <ul className="space-y-1">
-                                        {data.linked_patterns.map((memberId: any, i: number) => {
-                                            const displayId = safeRenderItem(memberId);
-                                            return (
-                                                <li key={i} className="flex items-center gap-2">
-                                                    <div className="w-5 h-5 rounded-full bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300 flex items-center justify-center text-[10px] font-bold font-mono">
-                                                        {i + 1}
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => onSymbolClick && onSymbolClick(displayId)}
-                                                        className="text-xs font-mono text-gray-700 dark:text-gray-300 hover:text-purple-500 transition-colors"
-                                                    >
-                                                        {displayId}
-                                                    </button>
-                                                </li>
-                                            );
-                                        })}
+                                    <ul className="space-y-2">
+                                        {data.linked_patterns.map((link: any, i: number) => renderLinkItem(link, i, "bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300", <Layout size={10} />))}
                                     </ul>
                                 </div>
                             )}
@@ -432,23 +448,12 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                     {/* Note: Lattice uses 'members', Persona uses 'linked_personas'. This handles legacy or pattern-specific links */}
                     {data.linked_patterns && data.linked_patterns.length > 0 && (
                         <div>
-                             <div className="text-[10px] uppercase tracking-widest text-gray-500 font-mono border-b border-gray-200 dark:border-gray-800 pb-1 mb-3">
-                                <GitBranch size={10} className="inline mr-1" /> Linked Patterns
+                             <div className="text-[10px] uppercase tracking-widest text-gray-500 font-mono border-b border-gray-200 dark:border-gray-800 pb-1 mb-3 flex items-center justify-between">
+                                <span><GitBranch size={10} className="inline mr-1" /> Linked Patterns</span>
+                                <span className="text-xs normal-case font-sans font-normal">{data.linked_patterns.length} links</span>
                             </div>
-                            <ul className="space-y-1">
-                                {data.linked_patterns.map((link, i) => {
-                                    const linkId = safeRenderItem(link);
-                                    return (
-                                        <li key={i} className="text-xs font-mono pl-2 border-l border-gray-300 dark:border-gray-700">
-                                            <button 
-                                                onClick={() => onSymbolClick && onSymbolClick(linkId)}
-                                                className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 hover:underline text-left break-all transition-colors"
-                                            >
-                                                {linkId}
-                                            </button>
-                                        </li>
-                                    );
-                                })}
+                            <ul className="space-y-2">
+                                {data.linked_patterns.map((link, i) => renderLinkItem(link, i, "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300", <GitBranch size={10} />))}
                             </ul>
                         </div>
                     )}

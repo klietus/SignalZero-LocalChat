@@ -229,10 +229,16 @@ export interface SymbolDataDef {
     payload: Record<string, any>;
 }
 
+export interface SymbolLink {
+  id: string;
+  link_type: string;
+  bidirectional: boolean;
+}
+
 export interface SymbolDef {
   id: string;
   name: string;
-  kind?: SymbolKind; // defaults to 'pattern'
+  kind?: SymbolKind;
   created_at: string;
   updated_at: string;
   last_accessed_at?: string;
@@ -247,7 +253,7 @@ export interface SymbolDef {
   symbol_tag: string;
   facets: SymbolFacet;
   failure_mode: string;
-  linked_patterns: string[];
+  linked_patterns: SymbolLink[];
   [key: string]: any;
 }
 

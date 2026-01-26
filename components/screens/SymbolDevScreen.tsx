@@ -208,7 +208,16 @@ const sanitizeForEditor = (raw: any): SymbolDef => {
     if (!copy.symbol_domain || copy.symbol_domain === 'undefined') copy.symbol_domain = 'root';
     
     // Arrays
-    copy.linked_patterns = copy.linked_patterns || [];
+    if (Array.isArray(copy.linked_patterns)) {
+        copy.linked_patterns = copy.linked_patterns.map((item: any) => {
+            if (typeof item === 'string') {
+                return { id: item, link_type: 'relates_to', bidirectional: false };
+            }
+            return item;
+        });
+    } else {
+        copy.linked_patterns = [];
+    }
 
     // Facets
     if (!copy.facets) copy.facets = {};
@@ -256,16 +265,19 @@ const SymbolRelationshipField = ({
     placeholder
 }: {
     items: any[] | undefined,
-    onChange: (newItems: string[]) => void,
+    onChange: (newItems: any[]) => void,
     placeholder: string
 }) => {
     const safeItems = Array.isArray(items) ? items : [];
 
     const handleRemove = (indexToRemove: number) => {
-        // Filter and ensure we pass back strings
-        const newItems = safeItems
-            .filter((_, idx) => idx !== indexToRemove)
-            .map(item => typeof item === 'object' ? (item.id || JSON.stringify(item)) : String(item));
+        const newItems = safeItems.filter((_, idx) => idx !== indexToRemove);
+        onChange(newItems);
+    };
+
+    const updateItem = (index: number, updates: any) => {
+        const newItems = [...safeItems];
+        newItems[index] = { ...newItems[index], ...updates };
         onChange(newItems);
     };
 
@@ -273,17 +285,15 @@ const SymbolRelationshipField = ({
         e.preventDefault();
         const symbolId = e.dataTransfer.getData("text/plain");
         if (symbolId) {
-            // Check existence using string comparison
             const exists = safeItems.some(item => {
                 const idStr = typeof item === 'object' ? item.id : item;
                 return idStr === symbolId;
             });
 
             if (!exists) {
-                // Ensure we preserve existing structure but add new ID string
                 const newItems = [
-                    ...safeItems.map(item => typeof item === 'object' ? (item.id || JSON.stringify(item)) : String(item)),
-                    symbolId
+                    ...safeItems,
+                    { id: symbolId, link_type: 'relates_to', bidirectional: false }
                 ];
                 onChange(newItems);
             }
@@ -291,32 +301,60 @@ const SymbolRelationshipField = ({
     };
 
     const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault(); // Essential to allow dropping
+        e.preventDefault();
     };
 
     return (
         <div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
-            className="min-h-[60px] w-full bg-gray-50 dark:bg-gray-900/50 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-2 transition-colors hover:border-indigo-400 dark:hover:border-indigo-600"
+            className="min-h-[60px] w-full bg-gray-50 dark:bg-gray-900/50 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-3 transition-colors hover:border-indigo-400 dark:hover:border-indigo-600"
         >
             {safeItems.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-xs text-gray-400 italic pointer-events-none">
                     {placeholder} (Drag symbols here)
                 </div>
             ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="space-y-2">
                     {safeItems.map((item, idx) => {
-                        // Safe render for objects
                         const display = typeof item === 'object' ? (item.id || "Invalid Obj") : item;
+                        const linkType = typeof item === 'object' ? item.link_type : 'relates_to';
+                        const bidirectional = typeof item === 'object' ? !!item.bidirectional : false;
+
                         return (
-                            <div key={`${display}-${idx}`} className="flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1 shadow-sm group">
-                                <span className="text-[10px] font-mono text-gray-700 dark:text-gray-300">{display}</span>
+                            <div key={`${display}-${idx}`} className="flex flex-wrap items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 shadow-sm group">
+                                <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 min-w-[120px] truncate">{display}</span>
+                                
+                                <div className="h-4 w-[1px] bg-gray-200 dark:bg-gray-700 hidden sm:block"></div>
+
+                                <select 
+                                    value={linkType}
+                                    onChange={(e) => updateItem(idx, { link_type: e.target.value })}
+                                    className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-1.5 py-0.5 text-[10px] font-sans"
+                                >
+                                    <option value="relates_to">relates_to</option>
+                                    <option value="depends_on">depends_on</option>
+                                    <option value="instance_of">instance_of</option>
+                                    <option value="part_of">part_of</option>
+                                    <option value="evolved_from">evolved_from</option>
+                                    <option value="conflicts_with">conflicts_with</option>
+                                </select>
+
+                                <button
+                                    onClick={() => updateItem(idx, { bidirectional: !bidirectional })}
+                                    title={bidirectional ? "Bidirectional" : "Unidirectional"}
+                                    className={`p-1 rounded transition-colors ${bidirectional ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`}
+                                >
+                                    <ArrowRightLeft size={12} />
+                                </button>
+
+                                <div className="flex-1"></div>
+
                                 <button
                                     onClick={() => handleRemove(idx)}
-                                    className="text-gray-400 hover:text-red-500 transition-colors"
+                                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                                 >
-                                    <X size={12} />
+                                    <X size={14} />
                                 </button>
                             </div>
                         );
@@ -650,7 +688,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                 closure: convertConfig.closure as any
             },
             // Use linked_patterns for lattice membership
-            linked_patterns: convertConfig.members,
+            linked_patterns: convertConfig.members.map(id => ({ id, link_type: 'relates_to', bidirectional: false })),
             // Merge facets but ensure lattice defaults are applied where relevant
             facets: {
                 ...currentSymbol.facets,
