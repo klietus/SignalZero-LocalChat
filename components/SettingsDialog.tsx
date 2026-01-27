@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
-import { X, Save, LogOut, Shield, Database, Server, Network, Lock, Cpu, Cloud, Search } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Save, LogOut, Shield, Database, Server, Network, Lock, Cpu, Cloud, Search, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
 import { UserProfile } from '../types';
 import { getApiUrl, setApiUrl } from '../services/config';
 import { settingsService } from '../services/settingsService';
+import { uploadServiceAccount } from '../services/api';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -29,6 +30,11 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   // Google Search State
   const [googleSearchKey, setGoogleSearchKey] = useState('');
   const [googleSearchCx, setGoogleSearchCx] = useState('');
+  
+  // Service Account State
+  const [isUploadingSA, setIsUploadingSA] = useState(false);
+  const [saUploadStatus, setSaUploadStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const saInputRef = useRef<HTMLInputElement>(null);
   
   // Inference State
   const [inferenceProvider, setInferenceProvider] = useState<'local' | 'openai' | 'gemini'>('local');
@@ -171,9 +177,32 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
       }
   };
 
+  const handleSAFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+        setSaUploadStatus({ type: 'error', message: 'Please upload a valid JSON file.' });
+        return;
+    }
+
+    setIsUploadingSA(true);
+    setSaUploadStatus(null);
+    try {
+        await uploadServiceAccount(file);
+        setSaUploadStatus({ type: 'success', message: 'Service account updated successfully.' });
+    } catch (err: any) {
+        setSaUploadStatus({ type: 'error', message: err.message || 'Failed to upload service account.' });
+    } finally {
+        setIsUploadingSA(false);
+        if (saInputRef.current) saInputRef.current.value = '';
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       setServerUrl(getApiUrl());
+      setSaUploadStatus(null);
 
       const loadSettings = async () => {
         setIsLoading(true);
@@ -441,6 +470,48 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </div>
                 <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
                     Required for the system to perform web searches and grounding.
+                </p>
+            </div>
+
+            {/* Google Cloud Platform Section */}
+            <div className="space-y-2 pb-6 border-b border-gray-100 dark:border-gray-800">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono flex items-center gap-2">
+                    <Cloud size={14} /> Google Cloud Platform
+                </label>
+                <div className="space-y-3">
+                    <span className="text-[11px] font-mono text-gray-500 uppercase block">Service Account (JSON)</span>
+                    <div className="flex flex-col gap-2">
+                        <button
+                            onClick={() => saInputRef.current?.click()}
+                            disabled={isUploadingSA}
+                            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-mono border transition-all ${
+                                isUploadingSA 
+                                ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' 
+                                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-emerald-500 dark:hover:border-emerald-500'
+                            }`}
+                        >
+                            <Upload size={14} /> 
+                            {isUploadingSA ? 'Uploading...' : 'Upload Service Account Key'}
+                        </button>
+                        <input 
+                            ref={saInputRef}
+                            type="file" 
+                            accept=".json,application/json"
+                            onChange={handleSAFileChange}
+                            className="hidden"
+                        />
+                        {saUploadStatus && (
+                            <div className={`flex items-center gap-2 p-2 rounded text-[10px] font-mono ${
+                                saUploadStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
+                            }`}>
+                                {saUploadStatus.type === 'success' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                                {saUploadStatus.message}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
+                    Used to power Google Secret Manager and other GCP-based tools.
                 </p>
             </div>
 

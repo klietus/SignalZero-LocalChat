@@ -111,3 +111,46 @@ export const uploadFile = async (file: File) => {
         throw error;
     }
 };
+
+export const uploadServiceAccount = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const url = `${getApiUrl()}/admin/gcp-service-account`;
+    const token = localStorage.getItem('signalzero_auth_token') || '';
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'x-auth-token': token
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: response.statusText }));
+            throw new Error(errorData.error || `Upload failed: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        logger.error('API_UPLOAD_ERROR', 'Service account upload failed', error);
+        throw error;
+    }
+};
+
+export const getMicStatus = async () => {
+    const resp = await apiFetch('/voice/mic/status', { skipLog: true });
+    if (!resp.ok) throw new Error('Failed to get mic status');
+    return await resp.json();
+};
+
+export const toggleMic = async (enabled: boolean) => {
+    const resp = await apiFetch('/voice/mic/toggle', {
+        method: 'POST',
+        body: JSON.stringify({ enabled })
+    });
+    if (!resp.ok) throw new Error('Failed to toggle mic');
+    return await resp.json();
+};
