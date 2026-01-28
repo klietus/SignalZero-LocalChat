@@ -154,3 +154,32 @@ export const toggleMic = async (enabled: boolean) => {
     if (!resp.ok) throw new Error('Failed to toggle mic');
     return await resp.json();
 };
+
+export const getStoryStatus = async () => {
+    const resp = await apiFetch('/voice/story/status', { skipLog: true });
+    if (!resp.ok) throw new Error('Failed to get story status');
+    return await resp.json();
+};
+
+export const toggleStoryMode = async (enabled: boolean) => {
+    const resp = await apiFetch('/voice/story/toggle', {
+        method: 'POST',
+        body: JSON.stringify({ enabled })
+    });
+    if (!resp.ok) throw new Error('Failed to toggle story mode');
+    return await resp.json();
+};
+
+export const changePassword = async (oldPassword: string, newPassword: string) => {
+    const resp = await apiFetch('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ oldPassword, newPassword })
+    });
+    
+    if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({ error: 'Failed to change password' }));
+        throw new Error(errorData.error || 'Failed to change password');
+    }
+    
+    return await resp.json();
+};

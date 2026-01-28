@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { User, Terminal, Network, ChevronDown, ChevronRight, Activity, Globe, Copy, RotateCcw, Paperclip } from 'lucide-react';
+import { User, Terminal, Network, ChevronDown, ChevronRight, Activity, Globe, Copy, RotateCcw, Paperclip, Volume2 } from 'lucide-react';
 // @ts-ignore
 import ReactMarkdown from 'react-markdown';
 // @ts-ignore
@@ -153,9 +153,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
   const [showTraceList, setShowTraceList] = useState(false);
   const [copyLabel, setCopyLabel] = useState('Copy');
 
+  const hasCalledSpeak = useMemo(() => {
+    return message.toolCalls?.some(tc => tc.name === 'speak');
+  }, [message.toolCalls]);
+
   // Extract traces and clean content
-  const { traces, contentWithoutTraces } = useMemo(() => {
+  const { traces, contentWithoutTraces, isVoiceOrigin } = useMemo(() => {
     const extractedTraces: TraceData[] = [];
+    let isVoice = false;
     let cleanContent = message.content.replace(/<sz_trace>([\s\S]*?)<\/sz_trace>/g, (match, inner) => {
       try {
         const cleanJson = inner.replace(/```json\n?|```/g, '').trim();
@@ -166,6 +171,19 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
       }
       return ''; // Remove trace block from text
     });
+
+    // Detect if this is a voice-wrapped message from the server
+    if (isUser && cleanContent.trim().startsWith('{') && cleanContent.trim().endsWith('}')) {
+        try {
+            const parsed = JSON.parse(cleanContent);
+            if (parsed.voice_message) {
+                cleanContent = parsed.voice_message;
+                isVoice = true;
+            }
+        } catch (e) {
+            // Not voice JSON
+        }
+    }
 
     // Strip attachments marker and everything after it for user messages in UI
     if (isUser) {
@@ -184,7 +202,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
         console.log(`[ChatMessage] Extracted ${extractedTraces.length} traces from message ${message.id}`);
     }
 
-    return { traces: extractedTraces, contentWithoutTraces: cleanContent };
+    return { traces: extractedTraces, contentWithoutTraces: cleanContent, isVoiceOrigin: isVoice };
   }, [message.content, message.id, isUser]);
 
   const handleCopy = async () => {
@@ -384,7 +402,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
                             <span>{message.metadata.attachments.length} Attachment{message.metadata.attachments.length !== 1 ? 's' : ''}</span>
                         </div>
                     )}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
+                        {isVoiceOrigin && (
+                            <div className="flex items-center gap-1 text-amber-300 mr-1" title="Voice Input">
+                                <Volume2 size={14} />
+                            </div>
+                        )}
                         <button
                             onClick={() => onRetry && onRetry(message.content)}
                             className="p-1 rounded text-indigo-200 hover:text-white hover:bg-white/10 transition-colors"
@@ -420,7 +443,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSymbolClick
                 </div>
 
                 {/* Right: Actions */}
-                <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {hasCalledSpeak && (
+                    <div className="flex items-center gap-1 text-amber-500 mr-1" title="Voice Output">
+                        <Volume2 size={14} />
+                    </div>
+                  )}
                   {traces.length > 0 && (
                     <button
                       onClick={() => setShowTraceList(prev => !prev)}

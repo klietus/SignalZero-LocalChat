@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SendHorizontal, Loader2, Mic, Square, Plus, FileUp, X, Play, MicOff } from 'lucide-react';
-import { uploadFile, getMicStatus, toggleMic } from '../services/api';
+import { SendHorizontal, Loader2, Mic, Square, Plus, FileUp, X, Play, MicOff, BookOpen, BookX } from 'lucide-react';
+import { uploadFile, getMicStatus, toggleMic, getStoryStatus, toggleStoryMode } from '../services/api';
 
 interface ChatInputProps {
   onSend: (message: string, options?: { viaVoice?: boolean, attachments?: { id: string, filename: string, type: string }[] }) => void;
@@ -13,6 +13,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, disabled, 
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<{ id: string, filename: string, type: string }[]>([]);
   const [isMicOn, setIsMicOn] = useState(false);
+  const [isStoryMode, setIsStoryMode] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -23,14 +24,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, disabled, 
     textRef.current = text;
   }, [text]);
 
-  // Sync Mic Status with Server
+  // Sync Mic and Story Status with Server
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const status = await getMicStatus();
-        setIsMicOn(status.enabled);
+        const micStatus = await getMicStatus();
+        setIsMicOn(micStatus.enabled);
+        
+        const storyStatus = await getStoryStatus();
+        setIsStoryMode(storyStatus.enabled);
       } catch (e) {
-        console.error("Failed to fetch mic status", e);
+        console.error("Failed to fetch status", e);
       }
     };
 
@@ -143,6 +147,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, disabled, 
     }
   };
 
+  const handleStoryToggle = async () => {
+    const newState = !isStoryMode;
+    setIsStoryMode(newState); // Optimistic update
+    try {
+      await toggleStoryMode(newState);
+    } catch (e) {
+      console.error("Failed to toggle story mode", e);
+      setIsStoryMode(!newState); // Revert on error
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -210,6 +225,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, disabled, 
           />
 
           <div className="absolute right-4 bottom-2 flex items-center gap-2">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={handleStoryToggle}
+              className={`p-2 rounded-md shadow-sm transition-all ${isStoryMode ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'} disabled:opacity-40 disabled:cursor-not-allowed`}
+              aria-label={isStoryMode ? 'Disable story mode' : 'Enable story mode'}
+              title={isStoryMode ? 'Story Mode Active' : 'Story Mode Inactive'}
+            >
+              {isStoryMode ? <BookOpen size={16} /> : <BookX size={16} />}
+            </button>
+
             <button
               type="button"
               disabled={disabled}

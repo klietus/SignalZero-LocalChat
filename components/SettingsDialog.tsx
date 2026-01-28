@@ -4,7 +4,7 @@ import { X, Save, LogOut, Shield, Database, Server, Network, Lock, Cpu, Cloud, S
 import { UserProfile } from '../types';
 import { getApiUrl, setApiUrl } from '../services/config';
 import { settingsService } from '../services/settingsService';
-import { uploadServiceAccount } from '../services/api';
+import { uploadServiceAccount, changePassword } from '../services/api';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -43,6 +43,13 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [inferenceModel, setInferenceModel] = useState('');
   const [inferenceLoopModel, setInferenceLoopModel] = useState('');
   const [inferenceVisionModel, setInferenceVisionModel] = useState('');
+
+  // Password Change State
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordChangeStatus, setPasswordChangeStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   
   // Local storage for provider configs during session
   const [storedConfigs, setStoredConfigs] = useState<Record<string, any>>({});
@@ -196,6 +203,32 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     } finally {
         setIsUploadingSA(false);
         if (saInputRef.current) saInputRef.current.value = '';
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!oldPassword || !newPassword) {
+        setPasswordChangeStatus({ type: 'error', message: 'All fields are required.' });
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        setPasswordChangeStatus({ type: 'error', message: 'New passwords do not match.' });
+        return;
+    }
+
+    setIsChangingPassword(true);
+    setPasswordChangeStatus(null);
+    try {
+        await changePassword(oldPassword, newPassword);
+        setPasswordChangeStatus({ type: 'success', message: 'Password changed successfully.' });
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+    } catch (err: any) {
+        setPasswordChangeStatus({ type: 'error', message: err.message || 'Failed to change password.' });
+    } finally {
+        setIsChangingPassword(false);
     }
   };
 
@@ -513,6 +546,59 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
                     Used to power Google Secret Manager and other GCP-based tools.
                 </p>
+            </div>
+
+            {/* Security Section */}
+            <div className="space-y-2 pb-6 border-b border-gray-100 dark:border-gray-800">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono flex items-center gap-2">
+                    <Lock size={14} /> Security
+                </label>
+                <div className="space-y-3">
+                    <span className="text-[11px] font-mono text-gray-500 uppercase block">Change Admin Password</span>
+                    <div className="space-y-2">
+                        <input
+                            type="password"
+                            value={oldPassword}
+                            onChange={(e) => setOldPassword(e.target.value)}
+                            placeholder="Current Password"
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                        />
+                        <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="New Password"
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                        />
+                        <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Confirm New Password"
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                        />
+                        <button
+                            onClick={handleChangePassword}
+                            disabled={isChangingPassword}
+                            className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-mono border transition-all ${
+                                isChangingPassword 
+                                ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' 
+                                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-emerald-500 dark:hover:border-emerald-500'
+                            }`}
+                        >
+                            <Lock size={14} /> 
+                            {isChangingPassword ? 'Updating...' : 'Update Password'}
+                        </button>
+                        {passwordChangeStatus && (
+                            <div className={`flex items-center gap-2 p-2 rounded text-[10px] font-mono ${
+                                passwordChangeStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
+                            }`}>
+                                {passwordChangeStatus.type === 'success' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                                {passwordChangeStatus.message}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Inference Configuration */}
