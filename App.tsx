@@ -3,7 +3,7 @@ import { MessageSquare, Database, Loader2 } from 'lucide-react';
 import { Message, Sender, UserProfile, TraceData, SymbolDef, ProjectMeta, ProjectImportStats, ContextSession, ContextStatus, ContextType, ContextMessage, ContextHistoryGroup } from './types';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
-import { SettingsDialog } from './components/SettingsDialog';
+import { SettingsScreen } from './components/screens/SettingsScreen';
 import { Header, HeaderProps } from './components/Header';
 import { ContextListPanel } from './components/panels/ContextListPanel';
 // Panels
@@ -144,7 +144,7 @@ function App() {
   const [processingContexts, setProcessingContexts] = useState<Set<string>>(new Set());
   
   const [user, setUser] = useState<UserProfile>(defaultUser);
-  const [currentView, setCurrentView] = useState<'context' | 'chat' | 'dev' | 'store' | 'test' | 'project' | 'help' | 'loops'>('chat');
+  const [currentView, setCurrentView] = useState<'context' | 'chat' | 'dev' | 'store' | 'test' | 'project' | 'help' | 'loops' | 'settings'>('chat');
   
   const [activeSystemPrompt, setActiveSystemPrompt] = useState<string>(ACTIVATION_PROMPT);
   const [projectMeta, setProjectMeta] = useState<ProjectMeta>({
@@ -157,7 +157,6 @@ function App() {
   const [selectedSymbolId, setSelectedSymbolId] = useState<string | null>(null);
   const [selectedSymbolContext, setSelectedSymbolContext] = useState<any>(null);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [traceLog, setTraceLog] = useState<TraceData[]>([]);
   const [isTracePanelOpen, setIsTracePanelOpen] = useState(false);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
@@ -454,7 +453,7 @@ function App() {
   };
 
   const getHeaderProps = (title: string, icon?: React.ReactNode): Omit<HeaderProps, 'children'> => ({
-      title, icon, currentView, onNavigate: setCurrentView, onToggleTrace: () => setIsTracePanelOpen(prev => !prev), isTraceOpen: isTracePanelOpen, onOpenSettings: () => setIsSettingsOpen(true), projectName: projectMeta.name
+      title, icon, currentView, onNavigate: setCurrentView, onToggleTrace: () => setIsTracePanelOpen(prev => !prev), isTraceOpen: isTracePanelOpen, onOpenSettings: () => setCurrentView('settings'), projectName: projectMeta.name
   });
 
   const handleImportProject = async (file: File) => {
@@ -553,6 +552,8 @@ function App() {
                 <HelpScreen headerProps={getHeaderProps('Docs')} />
             ) : currentView === 'loops' ? (
                 <LoopsScreen headerProps={getHeaderProps('Loops')} />
+            ) : currentView === 'settings' ? (
+                <SettingsScreen headerProps={getHeaderProps('Settings')} user={user} onLogout={handleLogout} />
             ) : (
                 <div className="flex flex-col h-full relative">
                     <Header
@@ -605,7 +606,6 @@ function App() {
                 </div>
             )}
         </div>
-        <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} user={user} onLogout={handleLogout} />
         <ImportStatusModal stats={importStats} onClose={() => { setImportStats(null); setCurrentView('project'); }} />
     </div>
   );

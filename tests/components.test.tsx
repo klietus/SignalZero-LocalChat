@@ -5,7 +5,7 @@ import { renderToString } from 'react-dom/server';
 import { ChatInput } from '../components/ChatInput.js';
 import { ChatMessage } from '../components/ChatMessage.js';
 import { Header } from '../components/Header.js';
-import { SettingsDialog } from '../components/SettingsDialog.js';
+import { SettingsScreen } from '../components/screens/SettingsScreen.js';
 import { ToolIndicator } from '../components/ToolIndicator.js';
 import { TraceVisualizer } from '../components/TraceVisualizer.js';
 import { HelpPanel } from '../components/panels/HelpPanel.js';
@@ -92,15 +92,12 @@ test('Header renders navigation and project badge', () => {
   assert.ok(html.includes('Demo'));
 });
 
-test('SettingsDialog renders when open', () => {
+test('SettingsScreen renders', () => {
   const html = renderToString(
-    React.createElement(SettingsDialog as any, {
-      isOpen: true,
-      onClose: () => {},
+    React.createElement(SettingsScreen as any, {
+      headerProps: { title: 'Settings', currentView: 'settings', onNavigate: () => {} },
       user: null,
-      onLogout: () => {},
-      theme: 'light',
-      onThemeToggle: () => {}
+      onLogout: () => {}
     })
   );
   assert.ok(html.includes('System Configuration'));
