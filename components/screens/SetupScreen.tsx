@@ -21,7 +21,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
     const [googleSearchCx, setGoogleSearchCx] = useState('');
 
     // Inference Settings
-    const [inferenceProvider, setInferenceProvider] = useState<'local' | 'openai' | 'gemini'>('local');
+    const [inferenceProvider, setInferenceProvider] = useState<'local' | 'openai' | 'gemini' | 'kimi2'>('local');
     const [inferenceApiKey, setInferenceApiKey] = useState('');
     const [inferenceEndpoint, setInferenceEndpoint] = useState('http://localhost:1234/v1');
     const [inferenceModel, setInferenceModel] = useState('openai/gpt-oss-120b');
@@ -30,7 +30,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleProviderChange = (newProvider: 'local' | 'openai' | 'gemini') => {
+    const handleProviderChange = (newProvider: 'local' | 'openai' | 'gemini' | 'kimi2') => {
         setInferenceProvider(newProvider);
         if (newProvider === 'local') {
              setInferenceEndpoint('http://localhost:1234/v1');
@@ -38,6 +38,9 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
         } else if (newProvider === 'openai') {
              setInferenceEndpoint('https://api.openai.com/v1');
              setInferenceModel('gpt-4-turbo-preview');
+        } else if (newProvider === 'kimi2') {
+             setInferenceEndpoint('https://api.moonshot.ai/v1');
+             setInferenceModel('kimi-k2-thinking');
         } else {
              setInferenceEndpoint('https://generativelanguage.googleapis.com');
              setInferenceModel('gemini-2.5-pro');
@@ -67,7 +70,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
             endpoint: inferenceEndpoint,
             model: inferenceModel,
             loopModel: inferenceModel, // Default loop model to same
-            visionModel: inferenceProvider === 'openai' ? 'gpt-4o-mini' : (inferenceProvider === 'gemini' ? 'gemini-2.5-flash-lite' : 'zai-org/glm-4.6v-flash')
+            visionModel: inferenceProvider === 'openai' ? 'gpt-4o-mini' : (inferenceProvider === 'gemini' ? 'gemini-2.5-flash-lite' : (inferenceProvider === 'kimi2' ? 'kimi-k2-thinking' : 'zai-org/glm-4.6v-flash'))
         };
 
         try {
@@ -295,6 +298,12 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                                 >
                                     Gemini
                                 </button>
+                                <button
+                                    onClick={() => handleProviderChange('kimi2')}
+                                    className={`flex-1 py-2 rounded text-xs font-bold font-mono border transition-all ${inferenceProvider === 'kimi2' ? 'bg-purple-50 border-purple-500 text-purple-700' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'}`}
+                                >
+                                    Kimi
+                                </button>
                             </div>
 
                             <div className="space-y-3">
@@ -327,7 +336,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                                             type="text" 
                                             value={inferenceModel}
                                             onChange={(e) => setInferenceModel(e.target.value)}
-                                            placeholder={inferenceProvider === 'openai' ? 'gpt-4-turbo-preview' : (inferenceProvider === 'gemini' ? 'gemini-2.5-pro' : 'openai/gpt-oss-120b')}
+                                            placeholder={inferenceProvider === 'openai' ? 'gpt-4-turbo-preview' : (inferenceProvider === 'gemini' ? 'gemini-2.5-pro' : (inferenceProvider === 'kimi2' ? 'kimi-k2-thinking' : 'openai/gpt-oss-120b'))}
                                             className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                                         />
                                     </div>

@@ -58,7 +58,7 @@ export interface InferenceConfiguration {
 }
 
 export interface InferenceSettings {
-  provider?: 'local' | 'openai' | 'gemini';
+  provider?: 'local' | 'openai' | 'gemini' | 'kimi2';
   apiKey?: string;
   endpoint?: string;
   model?: string;
@@ -68,7 +68,7 @@ export interface InferenceSettings {
 }
 
 export interface InferenceSettingsUpdate {
-  provider?: 'local' | 'openai' | 'gemini';
+  provider?: 'local' | 'openai' | 'gemini' | 'kimi2';
   apiKey?: string;
   endpoint?: string;
   model?: string;

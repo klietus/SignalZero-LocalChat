@@ -39,7 +39,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const saInputRef = useRef<HTMLInputElement>(null);
   
   // Inference State
-  const [inferenceProvider, setInferenceProvider] = useState<'local' | 'openai' | 'gemini'>('local');
+  const [inferenceProvider, setInferenceProvider] = useState<'local' | 'openai' | 'gemini' | 'kimi2'>('local');
   const [inferenceApiKey, setInferenceApiKey] = useState('');
   const [inferenceEndpoint, setInferenceEndpoint] = useState('');
   const [inferenceModel, setInferenceModel] = useState('');
@@ -145,7 +145,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     }
   };
 
-  const handleProviderChange = (newProvider: 'local' | 'openai' | 'gemini') => {
+  const handleProviderChange = (newProvider: 'local' | 'openai' | 'gemini' | 'kimi2') => {
       // 1. Save current state to storedConfigs
       const currentConfig = {
           apiKey: inferenceApiKey,
@@ -184,6 +184,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               setInferenceModel('gemini-1.5-pro');
               setInferenceLoopModel('gemini-1.5-pro');
               setInferenceVisionModel('gemini-1.5-flash');
+              setInferenceEndpoint('');
+          } else if (newProvider === 'kimi2') {
+              setInferenceModel('kimi-k2-thinking');
+              setInferenceLoopModel('kimi-k2-thinking');
+              setInferenceVisionModel('kimi-k2-thinking');
               setInferenceEndpoint('');
           } else {
               setInferenceModel('lmstudio-community/Meta-Llama-3-70B-Instruct');
@@ -439,7 +444,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                           </div>
 
                           <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-6">
-                              <div className="grid grid-cols-3 gap-3 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                              <div className="grid grid-cols-4 gap-3 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
                                   <button
                                       onClick={() => handleProviderChange('local')}
                                       className={`flex items-center justify-center gap-2 py-2 rounded-md text-sm font-bold font-mono transition-all ${
@@ -470,13 +475,23 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                                   >
                                       <Cpu size={14} /> Gemini
                                   </button>
+                                  <button
+                                      onClick={() => handleProviderChange('kimi2')}
+                                      className={`flex items-center justify-center gap-2 py-2 rounded-md text-sm font-bold font-mono transition-all ${
+                                          inferenceProvider === 'kimi2' 
+                                          ? 'bg-white dark:bg-gray-700 text-purple-500 shadow-sm' 
+                                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                                      }`}
+                                  >
+                                      <Cloud size={14} /> Kimi
+                                  </button>
                               </div>
 
                               <div className="space-y-4">
-                                  {(inferenceProvider === 'openai' || inferenceProvider === 'gemini') && (
+                                  {(inferenceProvider === 'openai' || inferenceProvider === 'gemini' || inferenceProvider === 'kimi2') && (
                                       <div className="space-y-2">
                                           <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">
-                                              {inferenceProvider === 'openai' ? 'OpenAI API Key' : 'Gemini API Key'}
+                                              {inferenceProvider === 'openai' ? 'OpenAI API Key' : (inferenceProvider === 'gemini' ? 'Gemini API Key' : 'Kimi API Key')}
                                           </label>
                                           <input
                                               type="password"
@@ -494,8 +509,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                                           type="text"
                                           value={inferenceEndpoint}
                                           onChange={(e) => setInferenceEndpoint(e.target.value)}
-                                          placeholder={inferenceProvider === 'openai' ? 'https://api.openai.com/v1' : (inferenceProvider === 'gemini' ? 'https://generativelanguage.googleapis.com' : 'http://localhost:1234/v1')}
-                                          disabled={inferenceProvider === 'openai' || inferenceProvider === 'gemini'} 
+                                          placeholder={inferenceProvider === 'openai' ? 'https://api.openai.com/v1' : (inferenceProvider === 'gemini' ? 'https://generativelanguage.googleapis.com' : (inferenceProvider === 'kimi2' ? 'https://api.moonshot.ai/v1' : 'http://localhost:1234/v1'))}
+                                          disabled={inferenceProvider === 'openai' || inferenceProvider === 'gemini' || inferenceProvider === 'kimi2'} 
                                           className={`w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100 ${inferenceProvider !== 'local' ? 'opacity-50 cursor-not-allowed' : ''}`}
                                       />
                                   </div>
