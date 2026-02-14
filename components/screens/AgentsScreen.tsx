@@ -10,13 +10,14 @@ import {
     PlayCircle,
     Plus,
     RefreshCcw,
-    Trash2
+    Trash2,
+    Zap
 } from 'lucide-react';
 import { Header, HeaderProps } from '../Header';
-import { loopService } from '../../services/loopService';
-import { LoopDefinition, LoopExecutionWithTraces } from '../../types';
+import { agentService } from '../../services/agentService';
+import { AgentDefinition, AgentExecutionWithTraces } from '../../types';
 
-interface LoopsScreenProps {
+interface AgentsScreenProps {
     headerProps: Omit<HeaderProps, 'children'>;
 }
 
@@ -52,121 +53,131 @@ const logStatusStyles: Record<string, string> = {
     failed: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
 };
 
-export const LoopsScreen: React.FC<LoopsScreenProps> = ({ headerProps }) => {
-    const [loops, setLoops] = useState<LoopDefinition[]>([]);
-    const [selectedLoopId, setSelectedLoopId] = useState<string | null>(null);
+export const AgentsScreen: React.FC<AgentsScreenProps> = ({ headerProps }) => {
+    const [agents, setAgents] = useState<AgentDefinition[]>([]);
+    const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [form, setForm] = useState(defaultForm);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [logs, setLogs] = useState<LoopExecutionWithTraces[]>([]);
+    const [logs, setLogs] = useState<AgentExecutionWithTraces[]>([]);
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
     const [logsLimit, setLogsLimit] = useState(20);
     const [includeTraces, setIncludeTraces] = useState(false);
-    const [logLoopFilter, setLogLoopFilter] = useState<string>('');
+    const [logAgentFilter, setLogAgentFilter] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
 
-    const loadLoops = async (focusId?: string) => {
+    const loadAgents = async (focusId?: string) => {
         setIsLoading(true);
         setError(null);
         try {
-            const data = await loopService.list();
-            setLoops(data);
+            const data = await agentService.list();
+            setAgents(data);
             if (data.length > 0) {
-                const nextSelected = focusId || selectedLoopId || data[0].id;
-                setSelectedLoopId(nextSelected);
+                const nextSelected = focusId || selectedAgentId || data[0].id;
+                setSelectedAgentId(nextSelected);
                 const match = data.find((l) => l.id === nextSelected);
                 if (match) {
                     setForm({
                         id: match.id,
-                        schedule: match.schedule,
+                        schedule: match.schedule || '',
                         prompt: match.prompt,
                         enabled: match.enabled
                     });
                 }
             } else {
-                setSelectedLoopId(null);
+                setSelectedAgentId(null);
                 setForm(defaultForm);
             }
         } catch (e: any) {
-            console.error('[Loops] Failed to load loops', e);
-            setError(e?.message || 'Failed to load loops');
+            console.error('[Agents] Failed to load agents', e);
+            setError(e?.message || 'Failed to load agents');
         } finally {
             setIsLoading(false);
         }
     };
 
     useEffect(() => {
-        loadLoops();
+        loadAgents();
     }, []);
 
-    const handleSelectLoop = (loop: LoopDefinition) => {
-        setSelectedLoopId(loop.id);
+    const handleSelectAgent = (agent: AgentDefinition) => {
+        setSelectedAgentId(agent.id);
         setForm({
-            id: loop.id,
-            schedule: loop.schedule,
-            prompt: loop.prompt,
-            enabled: loop.enabled
+            id: agent.id,
+            schedule: agent.schedule || '',
+            prompt: agent.prompt,
+            enabled: agent.enabled
         });
     };
 
     const resetForm = () => {
-        setSelectedLoopId(null);
+        setSelectedAgentId(null);
         setForm(defaultForm);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!form.id || !form.schedule || !form.prompt) {
-            alert('Loop id, schedule, and prompt are required.');
+        if (!form.id || !form.prompt) {
+            alert('Agent ID and prompt are required.');
             return;
         }
         setIsSaving(true);
         setError(null);
         try {
-            await loopService.upsert(form.id, {
-                schedule: form.schedule,
+            await agentService.upsert(form.id, {
+                schedule: form.schedule || undefined,
                 prompt: form.prompt,
                 enabled: form.enabled
             });
-            await loadLoops(form.id);
+            await loadAgents(form.id);
         } catch (err: any) {
-            console.error('[Loops] Failed to save loop', err);
-            setError(err?.message || 'Failed to save loop');
+            console.error('[Agents] Failed to save agent', err);
+            setError(err?.message || 'Failed to save agent');
         } finally {
             setIsSaving(false);
         }
     };
 
-    const handleToggle = async (loop: LoopDefinition) => {
+    const handleToggle = async (agent: AgentDefinition) => {
         setIsSaving(true);
         setError(null);
         try {
-            await loopService.upsert(loop.id, {
-                schedule: loop.schedule,
-                prompt: loop.prompt,
-                enabled: !loop.enabled
+            await agentService.upsert(agent.id, {
+                schedule: agent.schedule,
+                prompt: agent.prompt,
+                enabled: !agent.enabled
             });
-            await loadLoops(loop.id);
+            await loadAgents(agent.id);
         } catch (err: any) {
-            console.error('[Loops] Failed to toggle loop', err);
-            setError(err?.message || 'Failed to toggle loop');
+            console.error('[Agents] Failed to toggle agent', err);
+            setError(err?.message || 'Failed to toggle agent');
         } finally {
             setIsSaving(false);
         }
     };
 
-    const handleDelete = async (loop: LoopDefinition) => {
-        if (!confirm(`Delete loop "${loop.id}"? This cannot be undone.`)) return;
+    const handleDelete = async (agent: AgentDefinition) => {
+        if (!confirm(`Delete agent "${agent.id}"? This cannot be undone.`)) return;
         setIsSaving(true);
         setError(null);
         try {
-            await loopService.delete(loop.id);
-            await loadLoops();
+            await agentService.delete(agent.id);
+            await loadAgents();
         } catch (err: any) {
-            console.error('[Loops] Failed to delete loop', err);
-            setError(err?.message || 'Failed to delete loop');
+            console.error('[Agents] Failed to delete agent', err);
+            setError(err?.message || 'Failed to delete agent');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleTrigger = async (agentId: string) => {
+        try {
+            await agentService.trigger(agentId);
+            alert(`Agent ${agentId} triggered successfully.`);
+            handleLoadLogs();
+        } catch (err: any) {
+            alert(`Failed to trigger agent: ${err.message}`);
         }
     };
 
@@ -174,25 +185,25 @@ export const LoopsScreen: React.FC<LoopsScreenProps> = ({ headerProps }) => {
         setIsLoadingLogs(true);
         setError(null);
         try {
-            const logsData = await loopService.listLogs({
-                loopId: logLoopFilter || undefined,
+            const logsData = await agentService.listLogs({
+                agentId: logAgentFilter || undefined,
                 limit: logsLimit,
                 includeTraces
             });
             setLogs(logsData);
         } catch (err: any) {
-            console.error('[Loops] Failed to load logs', err);
-            setError(err?.message || 'Failed to load loop logs');
+            console.error('[Agents] Failed to load logs', err);
+            setError(err?.message || 'Failed to load agent logs');
         } finally {
             setIsLoadingLogs(false);
         }
     };
 
     useEffect(() => {
-        if (selectedLoopId) {
-            setLogLoopFilter((prev) => prev || selectedLoopId);
+        if (selectedAgentId) {
+            setLogAgentFilter((prev) => prev || selectedAgentId);
         }
-    }, [selectedLoopId]);
+    }, [selectedAgentId]);
 
     useEffect(() => {
         handleLoadLogs();
@@ -207,10 +218,10 @@ export const LoopsScreen: React.FC<LoopsScreenProps> = ({ headerProps }) => {
                         onClick={resetForm}
                         className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md text-xs font-mono font-bold transition-colors"
                     >
-                        <Plus size={14} /> New Loop
+                        <Plus size={14} /> New Agent
                     </button>
                     <button
-                        onClick={() => loadLoops(selectedLoopId || undefined)}
+                        onClick={() => loadAgents(selectedAgentId || undefined)}
                         className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-mono font-bold transition-colors"
                     >
                         <RefreshCcw size={14} /> Refresh
@@ -231,70 +242,80 @@ export const LoopsScreen: React.FC<LoopsScreenProps> = ({ headerProps }) => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 font-mono flex items-center gap-2">
-                                    <History size={14} /> Scheduled Loops
+                                    <History size={14} /> Scheduled Agents
                                 </h2>
-                                <p className="text-xs text-gray-500">Add, edit, disable, or remove active loops.</p>
+                                <p className="text-xs text-gray-500">Add, edit, disable, or remove active agents.</p>
                             </div>
                             {isLoading && <Loader2 size={18} className="animate-spin text-indigo-500" />}
                         </div>
 
                         <div className="space-y-3 overflow-y-auto max-h-[65vh] pr-1">
-                            {loops.length === 0 && !isLoading && (
+                            {agents.length === 0 && !isLoading && (
                                 <div className="text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
-                                    No loops configured yet. Create one to automate scheduled prompts.
+                                    No agents configured yet. Create one to automate scheduled prompts.
                                 </div>
                             )}
 
-                            {loops.map((loop) => (
+                            {agents.map((agent) => (
                                 <div
-                                    key={loop.id}
+                                    key={agent.id}
                                     className={`border rounded-lg p-3 transition-colors cursor-pointer ${
-                                        selectedLoopId === loop.id
+                                        selectedAgentId === agent.id
                                             ? 'border-indigo-300 bg-indigo-50/70 dark:border-indigo-800 dark:bg-indigo-900/20'
                                             : 'border-gray-200 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-gray-50 dark:hover:bg-gray-800/50'
                                     }`}
-                                    onClick={() => handleSelectLoop(loop)}
+                                    onClick={() => handleSelectAgent(agent)}
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="space-y-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="font-mono font-bold text-sm text-gray-800 dark:text-gray-100 truncate" title={loop.id}>
-                                                    {loop.id}
+                                                <h3 className="font-mono font-bold text-sm text-gray-800 dark:text-gray-100 truncate" title={agent.id}>
+                                                    {agent.id}
                                                 </h3>
-                                                {statusBadge(loop.enabled)}
+                                                {statusBadge(agent.enabled)}
                                             </div>
-                                            <p className="text-xs text-gray-500">{loop.schedule}</p>
-                                            <p className="text-xs text-gray-500">Last run: {formatDate(loop.lastRunAt)}</p>
+                                            <p className="text-xs text-gray-500">{agent.schedule || 'Event Driven'}</p>
+                                            <p className="text-xs text-gray-500">Last run: {formatDate(agent.lastRunAt)}</p>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handleToggle(loop);
+                                                    handleTrigger(agent.id);
                                                 }}
-                                                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold font-mono transition-colors ${
-                                                    loop.enabled
-                                                        ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-200'
-                                                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200'
-                                                }`}
+                                                className="p-1 rounded-md text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                                                title="Trigger now"
                                             >
-                                                {loop.enabled ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
-                                                {loop.enabled ? 'Disable' : 'Enable'}
+                                                <Zap size={14} />
                                             </button>
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handleDelete(loop);
+                                                    handleToggle(agent);
+                                                }}
+                                                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold font-mono transition-colors ${
+                                                    agent.enabled
+                                                        ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-200'
+                                                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200'
+                                                }`}
+                                            >
+                                                {agent.enabled ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
+                                                {agent.enabled ? 'Disable' : 'Enable'}
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(agent);
                                                 }}
                                                 className="p-1 rounded-md text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30"
-                                                title="Delete loop"
+                                                title="Delete agent"
                                             >
                                                 <Trash2 size={14} />
                                             </button>
                                         </div>
                                     </div>
-                                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 line-clamp-2" title={loop.prompt}>
-                                        {loop.prompt}
+                                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 line-clamp-2" title={agent.prompt}>
+                                        {agent.prompt}
                                     </p>
                                 </div>
                             ))}
@@ -305,7 +326,7 @@ export const LoopsScreen: React.FC<LoopsScreenProps> = ({ headerProps }) => {
                         <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3 mb-4">
                             <div>
                                 <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 font-mono flex items-center gap-2">
-                                    <FileText size={14} /> {selectedLoopId ? 'Edit Loop' : 'Add Loop'}
+                                    <FileText size={14} /> {selectedAgentId ? 'Edit Agent' : 'Add Agent'}
                                 </h2>
                                 <p className="text-xs text-gray-500">Configure the schedule, prompt, and enabled status.</p>
                             </div>
@@ -315,13 +336,13 @@ export const LoopsScreen: React.FC<LoopsScreenProps> = ({ headerProps }) => {
                         <form className="space-y-4" onSubmit={handleSubmit}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">Loop ID</label>
+                                    <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">Agent ID</label>
                                     <input
                                         type="text"
                                         value={form.id}
                                         onChange={(e) => setForm({ ...form, id: e.target.value })}
                                         placeholder="daily-index-refresh"
-                                        disabled={!!selectedLoopId}
+                                        disabled={!!selectedAgentId}
                                         className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-70"
                                     />
                                     <p className="text-[11px] text-gray-500">IDs cannot be changed once created.</p>
@@ -332,10 +353,10 @@ export const LoopsScreen: React.FC<LoopsScreenProps> = ({ headerProps }) => {
                                         type="text"
                                         value={form.schedule}
                                         onChange={(e) => setForm({ ...form, schedule: e.target.value })}
-                                        placeholder="0 * * * *"
+                                        placeholder="0 * * * * (Optional)"
                                         className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                     />
-                                    <p className="text-[11px] text-gray-500">Use cron syntax supported by the API.</p>
+                                    <p className="text-[11px] text-gray-500">Leave empty for event-driven / manual only.</p>
                                 </div>
                             </div>
 
@@ -345,7 +366,7 @@ export const LoopsScreen: React.FC<LoopsScreenProps> = ({ headerProps }) => {
                                     value={form.prompt}
                                     onChange={(e) => setForm({ ...form, prompt: e.target.value })}
                                     rows={6}
-                                    placeholder="Describe what the loop should do each run..."
+                                    placeholder="Describe what the agent should do each run..."
                                     className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 />
                                 <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -367,15 +388,15 @@ export const LoopsScreen: React.FC<LoopsScreenProps> = ({ headerProps }) => {
                                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-mono font-bold transition-colors disabled:opacity-70"
                                 >
                                     {isSaving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                                    {selectedLoopId ? 'Update Loop' : 'Create Loop'}
+                                    {selectedAgentId ? 'Update Agent' : 'Create Agent'}
                                 </button>
-                                {selectedLoopId && (
+                                {selectedAgentId && (
                                     <button
                                         type="button"
                                         onClick={resetForm}
                                         className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-mono font-bold transition-colors"
                                     >
-                                        <RefreshCcw size={16} /> New Loop
+                                        <RefreshCcw size={16} /> New Agent
                                     </button>
                                 )}
                             </div>
@@ -387,19 +408,19 @@ export const LoopsScreen: React.FC<LoopsScreenProps> = ({ headerProps }) => {
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 pb-3 mb-4">
                         <div>
                             <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 font-mono flex items-center gap-2">
-                                <Clock size={14} /> Loop Executions
+                                <Clock size={14} /> Agent Executions
                             </h2>
-                            <p className="text-xs text-gray-500">Browse recent loop executions and captured traces.</p>
+                            <p className="text-xs text-gray-500">Browse recent agent executions and captured traces.</p>
                         </div>
                         <div className="flex items-center gap-2">
                             <select
-                                value={logLoopFilter}
-                                onChange={(e) => setLogLoopFilter(e.target.value)}
+                                value={logAgentFilter}
+                                onChange={(e) => setLogAgentFilter(e.target.value)}
                                 className="px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
                             >
-                                <option value="">All loops</option>
-                                {loops.map((loop) => (
-                                    <option key={loop.id} value={loop.id}>{loop.id}</option>
+                                <option value="">All agents</option>
+                                {agents.map((agent) => (
+                                    <option key={agent.id} value={agent.id}>{agent.id}</option>
                                 ))}
                             </select>
                             <input
@@ -442,7 +463,7 @@ export const LoopsScreen: React.FC<LoopsScreenProps> = ({ headerProps }) => {
                                             <span className={`px-2 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest ${logStatusStyles[log.status] || 'bg-gray-200 text-gray-700'}`}>
                                                 {log.status}
                                             </span>
-                                            <span className="text-xs font-mono text-gray-500">Loop: {log.loopId}</span>
+                                            <span className="text-xs font-mono text-gray-500">Agent: {log.agentId}</span>
                                         </div>
                                         <div className="text-xs text-gray-500 flex items-center gap-2">
                                             <Clock size={14} />

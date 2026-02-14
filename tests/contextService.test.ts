@@ -15,9 +15,9 @@ test('contextService creates session', { concurrency: false }, async () => {
         capturedBody = options.body;
         return new Response(JSON.stringify({ id: 'new-ctx' }));
     };
-    const session = await contextService.create('loop');
+    const session = await contextService.create('agent');
     assert.equal(session.id, 'new-ctx');
-    assert.equal(JSON.parse(capturedBody).type, 'loop');
+    assert.equal(JSON.parse(capturedBody).type, 'agent');
 });
 
 test('contextService archives session', { concurrency: false }, async () => {

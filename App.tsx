@@ -20,7 +20,7 @@ import { HelpScreen } from './components/screens/HelpScreen';
 import { ServerConnectScreen } from './components/screens/ServerConnectScreen';
 import { LoginScreen } from './components/screens/LoginScreen';
 import { SetupScreen } from './components/screens/SetupScreen';
-import { LoopsScreen } from './components/screens/LoopsScreen';
+import { AgentsScreen } from './components/screens/AgentsScreen';
 
 import { sendMessage, stopMessage, setSystemPrompt, getSystemPrompt } from './services/gemini';
 import { domainService } from './services/domainService';
@@ -93,13 +93,16 @@ const mapSingleContextMessage = (item: ContextMessage): Message => {
                 console.warn("Failed to parse tool arguments", e, tc.arguments);
                 args = { parseError: true, raw: tc.arguments };
             }
-        } else {
-            args = tc.arguments || {};
+        } else if (typeof tc.arguments === 'object' && tc.arguments !== null) {
+            args = tc.arguments;
+        } else if (item.toolArgs && tcIdx === 0) {
+            // Fallback to top-level toolArgs for single tool calls if present
+            args = item.toolArgs;
         }
 
         return {
             id: tc.id || `${item.timestamp}-${tcIdx}`,
-            name: tc.name || 'tool',
+            name: tc.name || item.toolName || 'tool',
             args
         };
     });
@@ -111,6 +114,7 @@ const mapSingleContextMessage = (item: ContextMessage): Message => {
         timestamp: new Date(item.timestamp),
         toolCalls,
         correlationId: item.correlationId,
+        toolCallId: item.toolCallId,
         metadata: item.metadata
     };
 };
@@ -118,12 +122,40 @@ const mapSingleContextMessage = (item: ContextMessage): Message => {
 const mergeModelMessages = (msgs: Message[], status?: string): Message => {
     if (msgs.length === 0) throw new Error("Empty merge");
     const last = msgs[msgs.length - 1];
+    
+    // 1. Gather all tool calls
+    const allToolCalls = msgs.flatMap(m => m.toolCalls || []);
+    
+    // 2. Identify tool results (messages with toolCallId) and map them
+    msgs.forEach(m => {
+        if (m.toolCallId) {
+            const call = allToolCalls.find(tc => tc.id === m.toolCallId);
+            if (call) {
+                call.result = m.content;
+            }
+        }
+    });
+
+    // 3. Filter content: remove tool results and system logs
+    const combinedContent = msgs
+        .map(m => m.content)
+        .filter(c => {
+            if (!c || !c.trim()) return false;
+            // Filter out tool results (they are in toolCalls now)
+            const isToolResult = msgs.some(m2 => m2.content === c && m2.toolCallId);
+            if (isToolResult) return false;
+            // Filter out system logs
+            if (c.startsWith('[System Log:')) return false;
+            return true;
+        })
+        .join('  \n\n\n');
+
     return {
         ...msgs[0], 
-        content: msgs.map(m => m.content).filter(c => c && c.trim()).join('  \n\n\n'),
-        toolCalls: msgs.flatMap(m => m.toolCalls || []),
+        content: combinedContent,
+        toolCalls: allToolCalls,
         timestamp: last.timestamp, 
-        isStreaming: status === 'processing' || last.isStreaming
+        isStreaming: status === 'processing' || msgs.some(m => m.isStreaming)
     };
 };
 
@@ -144,7 +176,8 @@ function App() {
   const [processingContexts, setProcessingContexts] = useState<Set<string>>(new Set());
   
   const [user, setUser] = useState<UserProfile>(defaultUser);
-  const [currentView, setCurrentView] = useState<'context' | 'chat' | 'dev' | 'store' | 'test' | 'project' | 'help' | 'loops' | 'settings'>('chat');
+  const [currentView, setCurrentView] = useState<'context' | 'chat' | 'dev' | 'store' | 'test' | 'project' | 'help' | 'agents' | 'settings'>('chat');
+  const [settingsInitialTab, setSettingsInitialTab] = useState('general');
   
   const [activeSystemPrompt, setActiveSystemPrompt] = useState<string>(ACTIVATION_PROMPT);
   const [projectMeta, setProjectMeta] = useState<ProjectMeta>({
@@ -164,6 +197,45 @@ function App() {
 
   // Auth State
   const [appState, setAppState] = useState<'checking' | 'setup' | 'login' | 'app'>('checking');
+  const lastActivityRef = useRef(Date.now());
+
+  const handleLogout = useCallback(() => {
+      localStorage.removeItem('signalzero_auth_token');
+      setUser(defaultUser);
+      setActiveContextId(null);
+      setMessageHistory({});
+      setAppState('login');
+      window.location.reload(); 
+  }, [defaultUser]);
+
+  // 15-minute auto-logout
+  useEffect(() => {
+      if (appState !== 'app') return;
+
+      const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 minutes
+      const interval = setInterval(() => {
+          const now = Date.now();
+          if (now - lastActivityRef.current > INACTIVITY_LIMIT) {
+              console.log("[Auth] Session expired due to inactivity.");
+              handleLogout();
+          }
+      }, 30000); // Check every 30s
+
+      const activityHandler = () => {
+          lastActivityRef.current = Date.now();
+      };
+      
+      window.addEventListener('mousedown', activityHandler);
+      window.addEventListener('keydown', activityHandler);
+      window.addEventListener('scroll', activityHandler, true);
+
+      return () => {
+          clearInterval(interval);
+          window.removeEventListener('mousedown', activityHandler);
+          window.removeEventListener('keydown', activityHandler);
+          window.removeEventListener('scroll', activityHandler, true);
+      };
+  }, [appState, handleLogout]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -182,6 +254,14 @@ function App() {
                 } else if (!data.authenticated) {
                     setAppState('login');
                 } else {
+                    if (data.user) {
+                        console.log("[App] Auth Success. User:", data.user);
+                        setUser(prev => ({ 
+                            ...prev, 
+                            name: data.user.username,
+                            role: data.user.role 
+                        }));
+                    }
                     setAppState('app');
                 }
             } else {
@@ -201,8 +281,13 @@ function App() {
   }, [isServerConnected]);
 
   const handleAuthSuccess = (token: string, userInfo: any) => {
-      if (userInfo && userInfo.name) {
-          setUser(prev => ({ ...prev, name: userInfo.name }));
+      if (userInfo) {
+          console.log("[App] handleAuthSuccess. UserInfo:", userInfo);
+          setUser(prev => ({ 
+              ...prev, 
+              name: userInfo.username || userInfo.name || prev.name, 
+              role: userInfo.role || prev.role 
+          }));
       }
       setAppState('app');
   };
@@ -224,7 +309,7 @@ function App() {
   }, [rawGroups]);
 
   const activeContext = useMemo(() => contexts.find(c => c.id === activeContextId), [activeContextId, contexts]);
-  const isLoopContext = activeContext?.type === 'loop';
+  const isAgentContext = activeContext?.type === 'agent';
 
   const messages = useMemo(() => {
       return rawGroups.flatMap(group => {
@@ -232,34 +317,31 @@ function App() {
           
           const assistantMsgs = group.assistantMessages.map(mapSingleContextMessage);
           const hasContent = assistantMsgs.some(m => m.content && m.content.trim().length > 0);
-          const hasTools = assistantMsgs.some(m => m.toolCalls && m.toolCalls.length > 0);
           
+          const resultMsgs: Message[] = [userMsg];
+
           if (assistantMsgs.length > 0) {
               const merged = mergeModelMessages(assistantMsgs, group.status);
-              // If it's a loop context, show everything.
+              // If it's an agent context, show everything.
               // Otherwise, hide empty tool rounds if no content.
-              if (isLoopContext || group.status === 'processing' || hasContent || !hasTools) { 
-                  return [userMsg, merged];
+              if (isAgentContext || group.status === 'processing' || hasContent) { 
+                  resultMsgs.push(merged);
               }
-              // If only tools and complete, user wanted to hide it.
-              return [userMsg];
-          }
-          
-          // If processing but no assistant messages yet -> Placeholder
-          if (group.status === 'processing') {
-              return [userMsg, {
+          } else if (group.status === 'processing') {
+              // If processing but no assistant messages yet -> Placeholder
+              resultMsgs.push({
                   id: 'pending-' + group.correlationId,
                   role: Sender.MODEL,
                   content: '',
                   timestamp: new Date(),
                   isStreaming: true,
                   correlationId: group.correlationId
-              }];
+              });
           }
           
-          return [userMsg];
+          return resultMsgs;
       });
-  }, [rawGroups]);
+  }, [rawGroups, isAgentContext]);
 
   const isCurrentContextProcessing = useMemo(() => {
       const isLocalProcessing = activeContextId ? processingContexts.has(activeContextId) : false;
@@ -272,7 +354,7 @@ function App() {
   const prevContextsSig = useRef<string>('');
 
   useEffect(() => {
-      if (!isServerConnected) return;
+      if (!isServerConnected || appState !== 'app') return;
 
       const poll = async () => {
           try {
@@ -340,7 +422,7 @@ function App() {
 
       const interval = setInterval(poll, 2000);
       return () => clearInterval(interval);
-  }, [isServerConnected]); // Removed messageHistory dependency
+  }, [isServerConnected, appState]); // Added appState dependency
 
   const handleCreateContext = async () => {
       // Clear view immediately while creating
@@ -453,7 +535,30 @@ function App() {
   };
 
   const getHeaderProps = (title: string, icon?: React.ReactNode): Omit<HeaderProps, 'children'> => ({
-      title, icon, currentView, onNavigate: setCurrentView, onToggleTrace: () => setIsTracePanelOpen(prev => !prev), isTraceOpen: isTracePanelOpen, onOpenSettings: () => setCurrentView('settings'), projectName: projectMeta.name
+      title, 
+      icon, 
+      currentView, 
+      onNavigate: (v: any) => { 
+          console.log("[App] onNavigate click:", v);
+          setSettingsInitialTab('general'); 
+          setCurrentView(v); 
+      }, 
+      onToggleTrace: () => setIsTracePanelOpen(prev => !prev), 
+      isTraceOpen: isTracePanelOpen, 
+      onOpenSettings: () => { 
+          console.log("[App] onOpenSettings click");
+          setSettingsInitialTab('general'); 
+          setCurrentView('settings'); 
+      }, 
+      onNavigateToUsers: () => { 
+          console.log("[App] onNavigateToUsers click");
+          setSettingsInitialTab('users'); 
+          setCurrentView('settings'); 
+      },
+      onLogout: handleLogout,
+      projectName: projectMeta.name, 
+      userRole: user.role,
+      userName: user.name
   });
 
   const handleImportProject = async (file: File) => {
@@ -473,27 +578,23 @@ function App() {
       }
   };
 
-  const handleLogout = () => {
-      setUser(defaultUser);
-      setActiveContextId(null);
-      setMessageHistory({});
-      setCurrentView('context'); // Go to splash
-  };
+
 
   // Hydrate project meta
   useEffect(() => {
+      if (appState !== 'app' || !isServerConnected) return;
       projectService.getActive().then(meta => { if(meta) setProjectMeta(meta); }).catch(() => {});
       getSystemPrompt().then(p => { if(p) setActiveSystemPrompt(p); }).catch(() => {});
-  }, []);
+  }, [appState, isServerConnected]);
 
   // Refresh system prompt when entering project view
   useEffect(() => {
-      if (currentView === 'project' && isServerConnected) {
+      if (currentView === 'project' && isServerConnected && appState === 'app') {
           getSystemPrompt().then(p => {
               if (p) setActiveSystemPrompt(p);
           }).catch(err => console.error("Failed to refresh system prompt", err));
       }
-  }, [currentView, isServerConnected]);
+  }, [currentView, isServerConnected, appState]);
 
   if (!isServerConnected) {
     return <ServerConnectScreen onConnect={() => setIsServerConnected(true)} />; 
@@ -550,10 +651,15 @@ function App() {
                 <TestRunnerScreen headerProps={getHeaderProps('Tests')} />
             ) : currentView === 'help' ? (
                 <HelpScreen headerProps={getHeaderProps('Docs')} />
-            ) : currentView === 'loops' ? (
-                <LoopsScreen headerProps={getHeaderProps('Loops')} />
+            ) : currentView === 'agents' ? (
+                <AgentsScreen headerProps={getHeaderProps('Agents')} />
             ) : currentView === 'settings' ? (
-                <SettingsScreen headerProps={getHeaderProps('Settings')} user={user} onLogout={handleLogout} />
+                <SettingsScreen 
+                    headerProps={getHeaderProps('Settings')} 
+                    user={user} 
+                    onLogout={handleLogout} 
+                    initialTab={settingsInitialTab} 
+                />
             ) : (
                 <div className="flex flex-col h-full relative">
                     <Header

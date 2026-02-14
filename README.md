@@ -8,7 +8,7 @@ SignalZero Local Chat is the visual interface for the **SignalZero Kernel**. It 
 *   **Symbolic Visualization:** Explore domain symbols, their relationships, and metadata through dedicated panels.
 *   **Trace Inspector:** Visualize the reasoning steps and tool executions (traces) behind each response.
 *   **Project Management:**
-    *   **Export/Import:** Save and load your entire project state (domains, symbols, tests, loops) as `.szproject` files.
+    *   **Export/Import:** Save and load your entire project state (domains, symbols, tests, agents) as `.szproject` files.
     *   **Sample Project:** Includes a built-in sample project to get started quickly.
 *   **System Configuration:**
     *   **Setup Wizard:** Guided first-run experience to set up admin credentials and AI models.
@@ -57,7 +57,7 @@ When you launch the application for the first time (or after clearing the databa
 *   **Chat:** Use the main chat window to query the system. Use `@` to reference symbols or domains contextually.
 *   **Forge (Symbol Dev):** Create and edit symbols manually. Define patterns, invariants, and activation conditions.
 *   **Store (Registry):** Browse and search the entire symbol registry across all domains.
-*   **Loops:** Manage background autonomous loops that run on defined schedules.
+*   **Agents:** Manage background autonomous agents that run on defined schedules.
 *   **Tests:** Create and run regression tests to ensure your symbolic system behaves as expected.
 
 ## License

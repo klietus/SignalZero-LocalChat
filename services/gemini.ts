@@ -108,7 +108,7 @@ export const generateRefactor = async (
     USER INSTRUCTION: "${input}"
     Use the bulk_update_symbols tool.
     `;
-    // Note: tools might not run in ephemeral context efficiently if they require confirmation loop,
+    // Note: tools might not run in ephemeral context efficiently if they require confirmation agent,
     // but for now we attempt it.
     return await sendAndWait(prompt);
 };

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Plus, Archive, MessageSquare, Cpu, Hash } from 'lucide-react';
+import { Plus, Archive, MessageSquare, Hash, Zap } from 'lucide-react';
 import { ContextSession } from '../../types';
 
 interface ContextListPanelProps {
@@ -20,7 +20,7 @@ export const ContextListPanel: React.FC<ContextListPanelProps> = ({
 }) => {
   const activeContexts = contexts.filter(c => c.status === 'open');
   const conversations = activeContexts.filter(c => c.type === 'conversation');
-  const loopContexts = activeContexts.filter(c => c.type === 'loop');
+  const agentContexts = activeContexts.filter(c => c.type === 'agent');
 
   const renderContextItem = (ctx: ContextSession) => (
     <div 
@@ -76,26 +76,26 @@ export const ContextListPanel: React.FC<ContextListPanelProps> = ({
                 <span>Conversations</span>
             </div>
             {conversations.length === 0 && (
-                <div className="px-2 py-4 text-gray-400 dark:text-gray-600 text-[10px] italic border border-dashed border-gray-300 dark:border-gray-800 rounded-lg text-center">
+                <div className="px-2 py-4 text-gray-400 dark:text-gray-600 text-[10px] italic border border-dashed border-gray-300 dark:border-gray-800 rounded-lg text-center" >
                     No active conversations.
                 </div>
             )}
             {conversations.map(renderContextItem)}
         </section>
 
-        {/* Loop / Async Section */}
-        {loopContexts.length > 0 && (
+        {/* Agent / Async Section */}
+        {agentContexts.length > 0 && (
             <section className="space-y-1">
                 <div className="px-2 mb-2 flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-t border-gray-200 dark:border-gray-800 pt-4">
-                    <Cpu size={10} />
-                    <span>Autonomous Threads</span>
+                    <Zap size={10} />
+                    <span>Autonomous Agents</span>
                 </div>
-                {loopContexts.map(ctx => {
-                    const loopName = ctx.metadata?.loopId || "Background Task";
+                {agentContexts.map(ctx => {
+                    const agentName = ctx.metadata?.agentId || "Background Task";
                     return (
                         <div key={ctx.id} className="space-y-1">
                             <div className="px-2 py-0.5 text-[9px] font-mono text-indigo-500/70 dark:text-indigo-400/50 uppercase truncate">
-                                [{loopName}]
+                                [{agentName}]
                             </div>
                             {renderContextItem(ctx)}
                         </div>

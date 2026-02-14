@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     Save, Shield, Database, Server, Network, Lock, Cpu, Cloud, 
-    Search, Upload, CheckCircle2, AlertCircle, Mic 
+    Search, Upload, CheckCircle2, AlertCircle, Mic, Users, Key, Trash2, Plus, RefreshCw
 } from 'lucide-react';
+import { userService, User } from '../../services/userService';
 import { UserProfile } from '../../types';
 import { getApiUrl, setApiUrl } from '../../services/config';
 import { settingsService } from '../../services/settingsService';
@@ -13,14 +14,16 @@ interface SettingsScreenProps {
     headerProps: Omit<HeaderProps, 'children'>;
     user: UserProfile | null;
     onLogout: () => void;
+    initialTab?: string;
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     headerProps,
     user,
-    onLogout
+    onLogout,
+    initialTab = 'general'
 }) => {
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [serverUrl, setServerUrl] = useState('');
   const [redisHost, setRedisHost] = useState('');
   const [redisPort, setRedisPort] = useState('');
@@ -43,7 +46,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [inferenceApiKey, setInferenceApiKey] = useState('');
   const [inferenceEndpoint, setInferenceEndpoint] = useState('');
   const [inferenceModel, setInferenceModel] = useState('');
-  const [inferenceLoopModel, setInferenceLoopModel] = useState('');
+  const [inferenceAgentModel, setInferenceAgentModel] = useState('');
   const [inferenceVisionModel, setInferenceVisionModel] = useState('');
 
   // Voice Server State
@@ -56,7 +59,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordChangeStatus, setPasswordChangeStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
-  
+
+  // User Management State
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [userError, setUserError] = useState<string | null>(null);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newUserUsername, setNewUserUsername] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'admin' | 'user'>('user');
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [currentUserApiKey, setCurrentUserApiKey] = useState<string | null>(null);
+
   // Local storage for provider configs during session
   const [storedConfigs, setStoredConfigs] = useState<Record<string, any>>({});
   
@@ -124,7 +138,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     setInferenceApiKey(inference.apiKey || '');
     setInferenceEndpoint(inference.endpoint || '');
     setInferenceModel(inference.model || '');
-    setInferenceLoopModel(inference.loopModel || inference.model || '');
+    setInferenceAgentModel(inference.agentModel || inference.model || '');
     setInferenceVisionModel(inference.visionModel || '');
     
     // Load saved configs
@@ -138,7 +152,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 apiKey: inference.apiKey,
                 endpoint: inference.endpoint,
                 model: inference.model,
-                loopModel: inference.loopModel,
+                agentModel: inference.agentModel,
                 visionModel: inference.visionModel
             }
         }));
@@ -151,7 +165,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           apiKey: inferenceApiKey,
           endpoint: inferenceEndpoint,
           model: inferenceModel,
-          loopModel: inferenceLoopModel,
+          agentModel: inferenceAgentModel,
           visionModel: inferenceVisionModel
       };
       
@@ -170,29 +184,29 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           setInferenceApiKey(saved.apiKey || '');
           setInferenceEndpoint(saved.endpoint || '');
           setInferenceModel(saved.model || '');
-          setInferenceLoopModel(saved.loopModel || '');
+          setInferenceAgentModel(saved.agentModel || '');
           setInferenceVisionModel(saved.visionModel || '');
       } else {
           // Defaults
           setInferenceApiKey('');
           if (newProvider === 'openai') {
               setInferenceModel('gpt-4-turbo-preview');
-              setInferenceLoopModel('gpt-4-turbo-preview');
+              setInferenceAgentModel('gpt-4-turbo-preview');
               setInferenceVisionModel('gpt-4o-mini');
               setInferenceEndpoint('');
           } else if (newProvider === 'gemini') {
               setInferenceModel('gemini-1.5-pro');
-              setInferenceLoopModel('gemini-1.5-pro');
+              setInferenceAgentModel('gemini-1.5-pro');
               setInferenceVisionModel('gemini-1.5-flash');
               setInferenceEndpoint('');
           } else if (newProvider === 'kimi2') {
               setInferenceModel('kimi-k2-thinking');
-              setInferenceLoopModel('kimi-k2-thinking');
+              setInferenceAgentModel('kimi-k2-thinking');
               setInferenceVisionModel('kimi-k2-thinking');
               setInferenceEndpoint('');
           } else {
               setInferenceModel('lmstudio-community/Meta-Llama-3-70B-Instruct');
-              setInferenceLoopModel('lmstudio-community/Meta-Llama-3-70B-Instruct');
+              setInferenceAgentModel('lmstudio-community/Meta-Llama-3-70B-Instruct');
               setInferenceVisionModel('gpt-4o-mini');
               setInferenceEndpoint('');
           }
@@ -283,7 +297,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           apiKey: inferenceApiKey,
           endpoint: inferenceEndpoint,
           model: inferenceModel,
-          loopModel: inferenceLoopModel,
+          agentModel: inferenceAgentModel,
           visionModel: inferenceVisionModel
         };
         const finalConfigs = { ...storedConfigs, [inferenceProvider]: currentConfig };
@@ -293,7 +307,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             apiKey: inferenceApiKey,
             endpoint: inferenceEndpoint || undefined,
             model: inferenceModel || undefined,
-            loopModel: inferenceLoopModel || undefined,
+            agentModel: inferenceAgentModel || undefined,
             visionModel: inferenceVisionModel || undefined,
             savedConfigs: finalConfigs
         };
@@ -329,18 +343,104 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     }
   };
 
+  // User Management Handlers
+  const loadUsers = async () => {
+    setIsLoadingUsers(true);
+    setUserError(null);
+    try {
+      const userList = await userService.listUsers();
+      setUsers(userList);
+    } catch (err: any) {
+      setUserError(err.message || 'Failed to load users');
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUserUsername || !newUserPassword) return;
+    setIsCreatingUser(true);
+    try {
+      await userService.createUser({
+        username: newUserUsername,
+        password: newUserPassword,
+        role: newUserRole
+      });
+      setNewUserUsername('');
+      setNewUserPassword('');
+      setNewUserRole('user');
+      setShowCreateUser(false);
+      await loadUsers();
+    } catch (err: any) {
+      setUserError(err.message || 'Failed to create user');
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user?')) return;
+    try {
+      await userService.deleteUser(userId);
+      await loadUsers();
+    } catch (err: any) {
+      setUserError(err.message || 'Failed to delete user');
+    }
+  };
+
+  const handleRegenerateApiKey = async (userId: string) => {
+    try {
+      const apiKey = await userService.regenerateApiKey(userId);
+      setCurrentUserApiKey(apiKey);
+      await loadUsers();
+    } catch (err: any) {
+      setUserError(err.message || 'Failed to regenerate API key');
+    }
+  };
+
+  const handleUpdateUserRole = async (userId: string, role: 'admin' | 'user') => {
+    try {
+      await userService.updateUser(userId, { role });
+      await loadUsers();
+      alert('User role updated successfully');
+    } catch (err: any) {
+      setUserError(err.message || 'Failed to update user role');
+    }
+  };
+
+  const handleShowApiKey = async () => {
+    try {
+      const user = await userService.getCurrentUser();
+      setCurrentUserApiKey(user.apiKey || null);
+    } catch (err: any) {
+      setUserError(err.message || 'Failed to get API key');
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadUsers();
+    }
+  }, [activeTab]);
+
   const tabs = [
       { id: 'general', label: 'General', icon: Shield },
       { id: 'inference', label: 'Inference', icon: Cpu },
       { id: 'services', label: 'Services', icon: Cloud },
       { id: 'voice', label: 'Voice Server', icon: Mic },
-      { id: 'data', label: 'Data Stores', icon: Database },
+      { id: 'data', label: 'Data Stores', icon: Database, adminOnly: true },
       { id: 'security', label: 'Security', icon: Lock },
-  ];
+      { id: 'users', label: 'Users', icon: Users, adminOnly: true },
+  ].filter(tab => !tab.adminOnly || user?.role === 'admin');
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100">
-      <Header {...headerProps} title="Settings" subtitle="System Configuration" icon={<Shield size={18} />}>
+      <Header 
+        {...headerProps} 
+        title={activeTab === 'users' ? 'Users' : 'Settings'} 
+        subtitle={activeTab === 'users' ? 'User Management' : 'System Configuration'} 
+        icon={activeTab === 'users' ? <Users size={18} className="text-emerald-500" /> : <Shield size={18} className="text-gray-500" />}
+      >
           <button
               onClick={handleSave}
               disabled={isSaving || isLoading}
@@ -388,7 +488,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                           <div className="overflow-hidden">
                               <div className="font-bold text-xs text-gray-900 dark:text-gray-100 truncate">{user.name}</div>
                               <button
-                                  onClick={onLogout}
+                                  onClick={() => {
+                                      localStorage.removeItem('signalzero_auth_token');
+                                      window.location.reload();
+                                  }}
                                   className="text-[10px] text-red-500 hover:underline font-mono uppercase tracking-wider"
                               >
                                   Sign Out
@@ -526,11 +629,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                                           />
                                       </div>
                                       <div className="space-y-2">
-                                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">Loop Model</label>
+                                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">Agent Model</label>
                                           <input
                                               type="text"
-                                              value={inferenceLoopModel}
-                                              onChange={(e) => setInferenceLoopModel(e.target.value)}
+                                              value={inferenceAgentModel}
+                                              onChange={(e) => setInferenceAgentModel(e.target.value)}
                                               className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
                                           />
                                       </div>
@@ -815,6 +918,197 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                                           </div>
                                       )}
                                   </div>
+                              </div>
+                          </div>
+                      </section>
+                  )}
+
+                  {activeTab === 'users' && (
+                      <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                          <div className="flex items-center justify-between">
+                              <div>
+                                  <h2 className="text-lg font-bold mb-1">User Management</h2>
+                                  <p className="text-sm text-gray-500">Manage users and API access.</p>
+                              </div>
+                              <button
+                                  onClick={() => setShowCreateUser(true)}
+                                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors"
+                              >
+                                  <Plus size={16} />
+                                  Add User
+                              </button>
+                          </div>
+
+                          {userError && (
+                              <div className="flex items-center gap-2 p-3 rounded-lg text-xs font-mono border bg-red-50 border-red-100 text-red-700">
+                                  <AlertCircle size={14} />
+                                  {userError}
+                              </div>
+                          )}
+
+                          {/* API Key Display */}
+                          {currentUserApiKey && (
+                              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-4 rounded-lg">
+                                  <div className="flex items-center justify-between mb-2">
+                                      <span className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Your API Key</span>
+                                      <button
+                                          onClick={() => setCurrentUserApiKey(null)}
+                                          className="text-emerald-600 hover:text-emerald-800"
+                                      >
+                                          Hide
+                                      </button>
+                                  </div>
+                                  <code className="block bg-white dark:bg-gray-900 p-3 rounded text-xs font-mono break-all">
+                                      {currentUserApiKey}
+                                  </code>
+                                  <div className="mt-2 flex gap-2">
+                                      <button
+                                          onClick={() => userService.copyApiKey(currentUserApiKey)}
+                                          className="text-xs text-emerald-600 hover:text-emerald-800 font-medium"
+                                      >
+                                          Copy to Clipboard
+                                      </button>
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* Create User Form */}
+                          {showCreateUser && (
+                              <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
+                                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 font-mono">Create New User</h3>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <input
+                                          type="text"
+                                          value={newUserUsername}
+                                          onChange={(e) => setNewUserUsername(e.target.value)}
+                                          placeholder="Username"
+                                          className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                                      />
+                                      <input
+                                          type="password"
+                                          value={newUserPassword}
+                                          onChange={(e) => setNewUserPassword(e.target.value)}
+                                          placeholder="Password"
+                                          className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                                      />
+                                  </div>
+                                  <select
+                                      value={newUserRole}
+                                      onChange={(e) => setNewUserRole(e.target.value as 'admin' | 'user')}
+                                      className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                                  >
+                                      <option value="user">User</option>
+                                      <option value="admin">Admin</option>
+                                  </select>
+                                  <div className="flex gap-2">
+                                      <button
+                                          onClick={handleCreateUser}
+                                          disabled={isCreatingUser || !newUserUsername || !newUserPassword}
+                                          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-medium transition-colors"
+                                      >
+                                          {isCreatingUser ? 'Creating...' : 'Create User'}
+                                      </button>
+                                      <button
+                                          onClick={() => setShowCreateUser(false)}
+                                          className="px-4 py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300"
+                                      >
+                                          Cancel
+                                      </button>
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* Users List */}
+                          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                              <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 font-mono">Users</h3>
+                                  <button
+                                      onClick={loadUsers}
+                                      disabled={isLoadingUsers}
+                                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-emerald-600 transition-colors"
+                                  >
+                                      <RefreshCw size={12} className={isLoadingUsers ? 'animate-spin' : ''} />
+                                      Refresh
+                                  </button>
+                              </div>
+                              
+                              {isLoadingUsers ? (
+                                  <div className="p-8 text-center text-gray-500">Loading users...</div>
+                              ) : users.length === 0 ? (
+                                  <div className="p-8 text-center text-gray-500">No users found</div>
+                              ) : (
+                                  <div className="divide-y divide-gray-200 dark:divide-gray-800">
+                                      {users.map((u) => (
+                                          <div key={u.id} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                              <div className="flex items-center gap-3">
+                                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                                      u.role === 'admin' 
+                                                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' 
+                                                          : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                                  }`}>
+                                                      {u.username.charAt(0).toUpperCase()}
+                                                  </div>
+                                                  <div>
+                                                      <div className="font-medium text-gray-900 dark:text-gray-100">{u.username}</div>
+                                                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                          <div className="flex items-center gap-1">
+                                                              <select 
+                                                                  value={u.role}
+                                                                  onChange={(e) => handleUpdateUserRole(u.id, e.target.value as 'admin' | 'user')}
+                                                                  className={`px-1.5 py-0.5 rounded border-none bg-transparent font-medium cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                                                                      u.role === 'admin' 
+                                                                          ? 'text-purple-700 dark:text-purple-400' 
+                                                                          : 'text-gray-700 dark:text-gray-400'
+                                                                  }`}
+                                                              >
+                                                                  <option value="user">user</option>
+                                                                  <option value="admin">admin</option>
+                                                              </select>
+                                                          </div>
+                                                          <span className={u.enabled ? 'text-emerald-600' : 'text-red-600'}>
+                                                              {u.enabled ? 'active' : 'disabled'}
+                                                          </span>
+                                                      </div>
+                                                  </div>
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                  <button
+                                                      onClick={() => handleRegenerateApiKey(u.id)}
+                                                      title="Regenerate API Key"
+                                                      className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                                  >
+                                                      <Key size={16} />
+                                                  </button>
+                                                  {user?.name !== u.username && (
+                                                      <button
+                                                          onClick={() => handleDeleteUser(u.id)}
+                                                          title="Delete User"
+                                                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                      >
+                                                          <Trash2 size={16} />
+                                                      </button>
+                                                  )}
+                                              </div>
+                                          </div>
+                                      ))}
+                                  </div>
+                              )}
+                          </div>
+
+                          {/* Current User API Key Section */}
+                          <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                              <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 font-mono mb-4">Your API Access</h3>
+                              <p className="text-sm text-gray-500 mb-4">
+                                  Use your API key to authenticate with the SignalZero MCP server or other programmatic interfaces.
+                              </p>
+                              <div className="flex gap-2">
+                                  <button
+                                      onClick={handleShowApiKey}
+                                      className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                                  >
+                                      <Key size={16} />
+                                      {currentUserApiKey ? 'Hide API Key' : 'Show API Key'}
+                                  </button>
                               </div>
                           </div>
                       </section>

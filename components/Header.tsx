@@ -2,7 +2,7 @@
 import React from 'react';
 import {
   FolderOpen, Database, Hammer, FlaskConical, MessageSquare,
-  Network, Settings, HelpCircle, ShieldCheck, RefreshCcw
+  Network, Settings, HelpCircle, ShieldCheck, RefreshCcw, Users, Zap, LogOut, User as UserIcon
 } from 'lucide-react';
 
 export interface HeaderProps {
@@ -19,8 +19,12 @@ export interface HeaderProps {
   onToggleTrace?: () => void;
   isTraceOpen?: boolean;
   onOpenSettings?: () => void;
+  onNavigateToUsers?: () => void;
+  onLogout?: () => void;
   
   projectName?: string;
+  userRole?: string;
+  userName?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -33,7 +37,10 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleTrace,
   isTraceOpen,
   onOpenSettings,
-  projectName
+  onLogout,
+  projectName,
+  userRole,
+  userName
 }) => {
   const NavButton = ({ view, icon: Icon, label }: any) => (
     <button
@@ -50,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
   );
 
   return (
-    <header className="h-14 bg-white/50 dark:bg-gray-900/50 backdrop-blur border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 z-20 shrink-0">
+    <header className="h-14 bg-white/50 dark:bg-gray-900/50 backdrop-blur border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 z-50 shrink-0 relative">
       
       {/* Left: Identity / Screen Title */}
       <div className="flex items-center gap-4 min-w-0">
@@ -70,6 +77,17 @@ export const Header: React.FC<HeaderProps> = ({
                 <ShieldCheck size={10} /> {projectName}
             </span>
         )}
+
+        {/* User Banner */}
+        {userName && (
+            <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 ml-4">
+                <UserIcon size={12} className="text-gray-400" />
+                <span className="text-[10px] font-bold font-mono text-gray-600 dark:text-gray-300 uppercase tracking-wider">{userName}</span>
+                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-tighter ${userRole === 'admin' ? 'bg-purple-100 text-purple-600 border border-purple-200 dark:bg-purple-900/30 dark:border-purple-800' : 'bg-blue-100 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:border-blue-800'}`}>
+                    {userRole}
+                </span>
+            </div>
+        )}
       </div>
 
       {/* Center/Right: Navigation & Actions */}
@@ -88,8 +106,24 @@ export const Header: React.FC<HeaderProps> = ({
             <NavButton view="store" icon={Database} label="Symbol Store" />
             <NavButton view="dev" icon={Hammer} label="Symbol Forge" />
             <NavButton view="test" icon={FlaskConical} label="Test Runner" />
-            <NavButton view="loops" icon={RefreshCcw} label="Loops" />
+            <NavButton view="agents" icon={Zap} label="Agents" />
             
+            <div className="h-4 w-px bg-gray-300 dark:bg-gray-700 mx-2"></div>
+
+            {onOpenSettings && (
+                <button onClick={onOpenSettings} className="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" title="Settings">
+                    <Settings size={18} />
+                </button>
+            )}
+
+            <NavButton view="help" icon={HelpCircle} label="Help" />
+
+            {onLogout && (
+                <button onClick={onLogout} className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Sign Out">
+                    <LogOut size={18} />
+                </button>
+            )}
+
             <div className="h-4 w-px bg-gray-300 dark:bg-gray-700 mx-2"></div>
 
             {onToggleTrace && (
@@ -101,16 +135,6 @@ export const Header: React.FC<HeaderProps> = ({
                     <Network size={18} />
                 </button>
             )}
-            
-            {onOpenSettings && (
-                <button onClick={onOpenSettings} className="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" title="Settings">
-                    <Settings size={18} />
-                </button>
-            )}
-
-            <NavButton view="help" icon={HelpCircle} label="Help" />
-
-            <div className="h-4 w-px bg-gray-300 dark:bg-gray-700 mx-2"></div>
 
             <NavButton view="chat" icon={MessageSquare} label="Kernel Chat" />
         </div>

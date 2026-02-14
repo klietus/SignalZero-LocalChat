@@ -11,7 +11,7 @@ export const contextService = {
         return data.contexts || [];
     },
 
-    async create(type: 'conversation' | 'loop' = 'conversation'): Promise<ContextSession> {
+    async create(type: 'conversation' | 'agent' = 'conversation'): Promise<ContextSession> {
         const res = await apiFetch('/contexts', {
             method: 'POST',
             body: JSON.stringify({ type })

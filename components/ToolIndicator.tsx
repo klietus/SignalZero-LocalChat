@@ -62,11 +62,21 @@ export const ToolIndicator: React.FC<ToolIndicatorProps> = ({ toolCalls, isFinis
             </div>
 
             {isExpanded && (
-                <div className="mt-2 pl-10 pr-2 pb-1 overflow-x-auto">
-                    <div className="text-[10px] font-mono text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Arguments</div>
-                    <pre className="text-[11px] font-mono bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700 whitespace-pre-wrap break-all">
-                        {JSON.stringify(call.args, null, 2)}
-                    </pre>
+                <div className="mt-2 pl-10 pr-2 pb-1 overflow-x-auto space-y-3">
+                    <div>
+                        <div className="text-[10px] font-mono text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Arguments</div>
+                        <pre className="text-[11px] font-mono bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700 whitespace-pre-wrap break-all">
+                            {JSON.stringify(call.args, null, 2)}
+                        </pre>
+                    </div>
+                    {call.result && (
+                        <div>
+                            <div className="text-[10px] font-mono text-emerald-600 dark:text-emerald-500 mb-1 uppercase tracking-wider">Result</div>
+                            <pre className="text-[11px] font-mono bg-emerald-50/50 dark:bg-emerald-900/10 p-2 rounded border border-emerald-100 dark:border-emerald-900/30 whitespace-pre-wrap break-all text-gray-700 dark:text-gray-300">
+                                {call.result}
+                            </pre>
+                        </div>
+                    )}
                 </div>
             )}
           </div>

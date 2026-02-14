@@ -47,6 +47,13 @@ export const apiFetch = async (path: string, options: ApiOptions = {}) => {
         });
         const duration = Date.now() - start;
 
+        if (response.status === 401 && !normalizedPath.includes('/auth/status')) {
+            logger.warn('API_UNAUTHORIZED', `Received 401 from ${normalizedPath}. Redirecting to login.`);
+            localStorage.removeItem('signalzero_auth_token');
+            // Hard reload to reset App state and trigger auth check
+            window.location.reload();
+        }
+
         if (!options.skipLog) {
             const responseClone = response.clone();
             responseClone.text().then(text => {

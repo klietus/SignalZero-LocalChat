@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ToggleLeft, ToggleRight, CloudDownload, Plus, Edit3, Loader2, ArrowRight, Download, Upload, Trash2, Settings, X, Shield, Tag, FileText, AlertTriangle } from 'lucide-react';
+import { ToggleLeft, ToggleRight, CloudDownload, Plus, Edit3, Loader2, ArrowRight, Download, Upload, Trash2, Settings, X, Shield, Tag, FileText, AlertTriangle, User as UserIcon, Globe } from 'lucide-react';
 import { domainService } from '../../services/domainService';
+import { userService, User } from '../../services/userService';
 import { SymbolDef } from '../../types';
 import { Header, HeaderProps } from '../Header';
 
@@ -21,6 +22,7 @@ interface ImportCandidate {
 
 export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, onNavigateToForge, headerProps }) => {
   const [items, setItems] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null); // Added error state
   
@@ -45,8 +47,20 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
     setLoading(true);
     setError(null); // Clear previous errors
     try {
-        const meta = await domainService.getMetadata();
-        setItems(meta);
+        const [meta, user] = await Promise.all([
+            domainService.getMetadata(),
+            userService.getCurrentUser().catch(() => null)
+        ]);
+        
+        // Alphabetize by name
+        const sortedMeta = [...meta].sort((a, b) => {
+            const nameA = (a.name || a.id).toLowerCase();
+            const nameB = (b.name || b.id).toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+
+        setItems(sortedMeta);
+        setCurrentUser(user);
         if (meta.length === 0) {
             setError("No domains found. Please create or import one."); // More specific message
         }
@@ -189,17 +203,26 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
                         <div key={item.id} className={`relative p-5 rounded-lg border transition-all flex flex-col gap-4 group ${item.enabled ? 'bg-white dark:bg-gray-900 border-emerald-500/30 shadow-sm' : 'bg-gray-100 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 opacity-75'}`}>
                             <div className="flex justify-between items-start">
                                 <div className="min-w-0">
-                                    <h3 className="font-bold font-mono text-gray-900 dark:text-gray-100 truncate max-w-[150px]">{item.name}</h3>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold font-mono text-gray-900 dark:text-gray-100 truncate max-w-[150px]">{item.name}</h3>
+                                        {item.isUserSpecific ? (
+                                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded text-[9px] font-bold uppercase tracking-wider font-mono border border-blue-200 dark:border-blue-800" title="User-specific domain"><UserIcon size={10} /> Individual</span>
+                                        ) : (
+                                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded text-[9px] font-bold uppercase tracking-wider font-mono border border-amber-200 dark:border-amber-800" title="Global domain shared across users"><Globe size={10} /> Global</span>
+                                        )}
+                                    </div>
                                     <div className="text-[10px] text-gray-400 font-mono mt-0.5 truncate max-w-[150px]">{item.id}</div>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
-                                    <button
-                                        onClick={() => handleDeleteDomain(item.id)}
-                                        className="p-2 text-red-400 hover:text-red-600 transition-colors"
-                                        title="Delete domain"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    {(item.isUserSpecific || currentUser?.role === 'admin') && (
+                                        <button
+                                            onClick={() => handleDeleteDomain(item.id)}
+                                            className="p-2 text-red-400 hover:text-red-600 transition-colors"
+                                            title="Delete domain"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => handleEditClick(item)}
                                         className="p-2 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 transition-colors"

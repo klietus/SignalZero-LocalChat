@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Plus, ChevronRight, Check, AlertTriangle, Loader2, Trash2, GitMerge, Layout, Box, ArrowRightLeft, X, User, UserCog, Database } from 'lucide-react';
 import { domainService } from '../../services/domainService';
+import { userService, User as UserType } from '../../services/userService';
 import { SymbolDef, SymbolFacet } from '../../types';
 import { generatePersonaConversion, generateLatticeConversion } from '../../services/gemini';
 import { Header, HeaderProps } from '../Header';
@@ -47,7 +48,7 @@ const DEFAULT_LATTICE: SymbolDef = {
     macro: '', // Lattices don't strictly use macro, they use lattice def
     lattice: {
         topology: 'inductive',
-        closure: 'loop'
+        closure: 'agent'
     },
     activation_conditions: [],
     symbol_domain: 'root',
@@ -234,7 +235,7 @@ const sanitizeForEditor = (raw: any): SymbolDef => {
         if (!copy.lattice) copy.lattice = {};
         // For dropdowns, defaults are acceptable, but for text/lists ensure empty
         copy.lattice.topology = copy.lattice.topology || 'inductive';
-        copy.lattice.closure = copy.lattice.closure || 'loop';
+        copy.lattice.closure = copy.lattice.closure || 'agent';
     }
 
     // Persona Specific
@@ -369,6 +370,8 @@ const SymbolRelationshipField = ({
 export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initialDomain, initialSymbol, headerProps }) => {
     // --- State ---
     const [domains, setDomains] = useState<string[]>([]);
+    const [domainMetadata, setDomainMetadata] = useState<any[]>([]);
+    const [currentUser, setCurrentUser] = useState<UserType | null>(null);
     const [selectedDomain, setSelectedDomain] = useState<string>('');
 
     const [symbolList, setSymbolList] = useState<any[]>([]);
@@ -390,7 +393,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
     const [convertConfig, setConvertConfig] = useState({
         newId: '',
         topology: 'inductive',
-        closure: 'loop',
+        closure: 'agent',
         members: [] as string[]
     });
 
@@ -409,9 +412,16 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
     // Load Domains from Local Cache
     useEffect(() => {
         const init = async () => {
-            const domainList = await domainService.listDomains();
+            const [domainList, meta, user] = await Promise.all([
+                domainService.listDomains(),
+                domainService.getMetadata(),
+                userService.getCurrentUser().catch(() => null)
+            ]);
+            
             const localDomains = domainList.sort();
             setDomains(localDomains);
+            setDomainMetadata(meta);
+            setCurrentUser(user);
 
             // Determine Domain selection
             let targetDomain = selectedDomain;
@@ -598,7 +608,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                 setConvertConfig({
                     newId: newLattice.id || (originalId || currentSymbol.id).replace('PAT', 'LAT') + '-LAT',
                     topology: newLattice.lattice?.topology || 'inductive',
-                    closure: newLattice.lattice?.closure || 'loop',
+                    closure: newLattice.lattice?.closure || 'agent',
                     members: members
                 });
                 setIsConvertModalOpen(true);
@@ -619,7 +629,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
             setConvertConfig({
                 newId,
                 topology: 'inductive',
-                closure: 'loop',
+                closure: 'agent',
                 // Populate from current links by default on manual fallback
                 members: members
             });
@@ -932,16 +942,22 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                             <span>{sym.id}</span>
                                             {currentSymbol.id === sym.id && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-1"></div>}
                                         </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                requestDeleteSymbol(sym.id);
-                                            }}
-                                            className="absolute right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                            title="Delete Symbol"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                        {(() => {
+                                            const meta = domainMetadata.find(m => m.id === selectedDomain);
+                                            const canDelete = meta?.isUserSpecific || currentUser?.role === 'admin';
+                                            return canDelete ? (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        requestDeleteSymbol(sym.id);
+                                                    }}
+                                                    className="absolute right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                    title="Delete Symbol"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            ) : null;
+                                        })()}
                                     </div>
                                 ))
                             )}
@@ -976,16 +992,22 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                             <span>{sym.id}</span>
                                             {currentSymbol.id === sym.id && <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mr-1"></div>}
                                         </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                requestDeleteSymbol(sym.id);
-                                            }}
-                                            className="absolute right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                            title="Delete Symbol"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                        {(() => {
+                                            const meta = domainMetadata.find(m => m.id === selectedDomain);
+                                            const canDelete = meta?.isUserSpecific || currentUser?.role === 'admin';
+                                            return canDelete ? (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        requestDeleteSymbol(sym.id);
+                                                    }}
+                                                    className="absolute right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                    title="Delete Symbol"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            ) : null;
+                                        })()}
                                     </div>
                                 ))
                             )}
@@ -1020,16 +1042,22 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                             <span>{sym.id}</span>
                                             {currentSymbol.id === sym.id && <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1"></div>}
                                         </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                requestDeleteSymbol(sym.id);
-                                            }}
-                                            className="absolute right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                            title="Delete Symbol"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                        {(() => {
+                                            const meta = domainMetadata.find(m => m.id === selectedDomain);
+                                            const canDelete = meta?.isUserSpecific || currentUser?.role === 'admin';
+                                            return canDelete ? (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        requestDeleteSymbol(sym.id);
+                                                    }}
+                                                    className="absolute right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                    title="Delete Symbol"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            ) : null;
+                                        })()}
                                     </div>
                                 ))
                             )}
@@ -1064,16 +1092,22 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                             <span>{sym.id}</span>
                                             {currentSymbol.id === sym.id && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1"></div>}
                                         </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                requestDeleteSymbol(sym.id);
-                                            }}
-                                            className="absolute right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                            title="Delete Symbol"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                        {(() => {
+                                            const meta = domainMetadata.find(m => m.id === selectedDomain);
+                                            const canDelete = meta?.isUserSpecific || currentUser?.role === 'admin';
+                                            return canDelete ? (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        requestDeleteSymbol(sym.id);
+                                                    }}
+                                                    className="absolute right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                    title="Delete Symbol"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            ) : null;
+                                        })()}
                                     </div>
                                 ))
                             )}
@@ -1273,11 +1307,11 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                         <div className="space-y-1">
                                             <Label>Closure Type</Label>
                                             <select
-                                                value={currentSymbol.lattice?.closure || 'loop'}
+                                                value={currentSymbol.lattice?.closure || 'agent'}
                                                 onChange={e => handleLatticeChange('closure', e.target.value)}
                                                 className={INPUT_STYLE}
                                             >
-                                                <option value="loop">Loop (Recursive)</option>
+                                                <option value="agent">Agent (Recursive)</option>
                                                 <option value="branch">Branch (Forking)</option>
                                                 <option value="collapse">Collapse (Reduction)</option>
                                                 <option value="constellation">Constellation (Graph)</option>
@@ -1617,7 +1651,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                         onChange={(e) => setConvertConfig(prev => ({ ...prev, closure: e.target.value }))}
                                         className={INPUT_STYLE}
                                     >
-                                        <option value="loop">Loop</option>
+                                        <option value="agent">Agent</option>
                                         <option value="branch">Branch</option>
                                         <option value="collapse">Collapse</option>
                                         <option value="constellation">Constellation</option>

@@ -821,24 +821,24 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/TraceData'
-  /loops:
+  /agents:
     get:
-      summary: List all configured loops
+      summary: List all configured agents
       responses:
         '200':
-          description: Scheduled loop definitions
+          description: Scheduled agent definitions
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  loops:
+                  agents:
                     type: array
                     items:
-                      $ref: '#/components/schemas/LoopDefinition'
-  /loops/{id}:
+                      $ref: '#/components/schemas/AgentDefinition'
+  /agents/{id}:
     get:
-      summary: Get a loop definition
+      summary: Get a agent definition
       parameters:
         - name: id
           in: path
@@ -847,15 +847,15 @@ paths:
             type: string
       responses:
         '200':
-          description: Loop definition
+          description: Agent definition
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoopDefinition'
+                $ref: '#/components/schemas/AgentDefinition'
         '404':
-          description: Loop not found
+          description: Agent not found
     put:
-      summary: Create or update a loop
+      summary: Create or update a agent
       parameters:
         - name: id
           in: path
@@ -871,24 +871,24 @@ paths:
               properties:
                 schedule:
                   type: string
-                  description: Cron-style schedule for the loop
+                  description: Cron-style schedule for the agent
                 prompt:
                   type: string
-                  description: Prompt appended to the active system prompt for loop execution
+                  description: Prompt appended to the active system prompt for agent execution
                 enabled:
                   type: boolean
               required: [schedule, prompt, enabled]
       responses:
         '200':
-          description: Upserted loop definition
+          description: Upserted agent definition
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoopDefinition'
+                $ref: '#/components/schemas/AgentDefinition'
         '400':
           description: Invalid schedule or request body
     delete:
-      summary: Delete a loop
+      summary: Delete a agent
       parameters:
         - name: id
           in: path
@@ -906,16 +906,16 @@ paths:
                   status:
                     type: string
                     description: deleted or not_found
-  /loops/logs:
+  /agents/logs:
     get:
-      summary: List loop execution logs
+      summary: List agent execution logs
       parameters:
-        - name: loopId
+        - name: agentId
           in: query
           required: false
           schema:
             type: string
-          description: Filter logs to a specific loop
+          description: Filter logs to a specific agent
         - name: limit
           in: query
           required: false
@@ -930,7 +930,7 @@ paths:
           description: Include symbolic traces captured for each execution
       responses:
         '200':
-          description: Loop execution logs
+          description: Agent execution logs
           content:
             application/json:
               schema:
@@ -939,7 +939,7 @@ paths:
                   logs:
                     type: array
                     items:
-                      $ref: '#/components/schemas/LoopExecutionWithTraces'
+                      $ref: '#/components/schemas/AgentExecutionWithTraces'
 components:
   schemas:
     HealthStatus:
@@ -1134,7 +1134,7 @@ components:
           type: string
         status:
           type: string
-    LoopDefinition:
+    AgentDefinition:
       type: object
       properties:
         id:
@@ -1155,12 +1155,12 @@ components:
           type: string
           format: date-time
           nullable: true
-    LoopExecutionLog:
+    AgentExecutionLog:
       type: object
       properties:
         id:
           type: string
-        loopId:
+        agentId:
           type: string
         startedAt:
           type: string
@@ -1183,9 +1183,9 @@ components:
         error:
           type: string
           nullable: true
-    LoopExecutionWithTraces:
+    AgentExecutionWithTraces:
       allOf:
-        - $ref: '#/components/schemas/LoopExecutionLog'
+        - $ref: '#/components/schemas/AgentExecutionLog'
         - type: object
           properties:
             traces:
@@ -1232,7 +1232,7 @@ components:
     LatticeClosure:
       type: string
       enum:
-        - loop
+        - agent
         - branch
         - collapse
         - constellation
@@ -1505,7 +1505,7 @@ components:
           $ref: '#/components/schemas/ProjectMeta'
         testCaseCount:
           type: number
-        loopCount:
+        agentCount:
           type: number
         domains:
           type: array
@@ -1573,7 +1573,7 @@ components:
           type: string
         type:
           type: string
-          enum: [conversation, loop]
+          enum: [conversation, agent]
         status:
           type: string
           enum: [open, closed]

@@ -23,6 +23,7 @@ export interface Message {
   isStreaming?: boolean;
   toolCalls?: ToolCallDetails[];
   correlationId?: string;
+  toolCallId?: string | null;
   metadata?: Record<string, any>;
 }
 
@@ -53,7 +54,7 @@ export interface InferenceConfiguration {
   apiKey: string;
   endpoint: string;
   model: string;
-  loopModel: string;
+  agentModel: string;
   visionModel: string;
 }
 
@@ -62,7 +63,7 @@ export interface InferenceSettings {
   apiKey?: string;
   endpoint?: string;
   model?: string;
-  loopModel?: string;
+  agentModel?: string;
   visionModel?: string;
   savedConfigs?: Record<string, InferenceConfiguration>;
 }
@@ -72,7 +73,7 @@ export interface InferenceSettingsUpdate {
   apiKey?: string;
   endpoint?: string;
   model?: string;
-  loopModel?: string;
+  agentModel?: string;
   visionModel?: string;
 }
 
@@ -104,7 +105,7 @@ export interface SystemSettingsUpdate {
   geminiKey?: string;
 }
 
-export type ContextType = 'conversation' | 'loop';
+export type ContextType = 'conversation' | 'agent';
 export type ContextStatus = 'open' | 'closed';
 
 export interface ContextSession {
@@ -150,6 +151,7 @@ export interface UserProfile {
   name: string;
   email: string;
   picture: string;
+  role?: 'admin' | 'user';
 }
 
 export interface TraceStep {
@@ -175,9 +177,10 @@ export interface TraceData {
   status: string;
 }
 
-export interface LoopDefinition {
+export interface AgentDefinition {
     id: string;
-    schedule: string;
+    userId?: string;
+    schedule?: string;
     prompt: string;
     enabled: boolean;
     createdAt?: string;
@@ -185,21 +188,21 @@ export interface LoopDefinition {
     lastRunAt?: string | null;
 }
 
-export type LoopExecutionStatus = 'running' | 'completed' | 'failed';
+export type AgentExecutionStatus = 'running' | 'completed' | 'failed';
 
-export interface LoopExecutionLog {
+export interface AgentExecutionLog {
     id: string;
-    loopId: string;
+    agentId: string;
     startedAt: string;
     finishedAt?: string | null;
-    status: LoopExecutionStatus;
+    status: AgentExecutionStatus;
     traceCount?: number;
     logFilePath?: string | null;
     responsePreview?: string | null;
     error?: string | null;
 }
 
-export interface LoopExecutionWithTraces extends LoopExecutionLog {
+export interface AgentExecutionWithTraces extends AgentExecutionLog {
     traces?: TraceData[];
 }
 
@@ -219,7 +222,7 @@ export type SymbolKind = 'pattern' | 'lattice' | 'persona' | 'data';
 
 export interface SymbolLatticeDef {
     topology: 'inductive' | 'deductive' | 'bidirectional' | 'invariant' | 'energy';
-    closure: 'loop' | 'branch' | 'collapse' | 'constellation' | 'synthesis';
+    closure: 'agent' | 'branch' | 'collapse' | 'constellation' | 'synthesis';
 }
 
 export interface SymbolPersonaDef {
@@ -363,6 +366,7 @@ export interface DomainImportStat {
 export interface ProjectImportStats {
     meta: ProjectMeta;
     testCaseCount: number;
+    agentCount: number;
     domains: DomainImportStat[];
     totalSymbols: number;
 }
