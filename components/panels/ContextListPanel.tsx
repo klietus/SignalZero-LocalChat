@@ -35,7 +35,7 @@ export const ContextListPanel: React.FC<ContextListPanelProps> = ({
       <div className="flex items-center gap-2 overflow-hidden">
         <MessageSquare size={14} className={`flex-shrink-0 ${activeContextId === ctx.id ? 'text-indigo-500' : 'text-gray-400'}`} />
         <div className="flex flex-col min-w-0">
-          <span className="truncate font-mono">{ctx.id}</span>
+          <span className="truncate font-mono">{ctx.name || ctx.id}</span>
           <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate">
               {new Date(ctx.createdAt).toLocaleTimeString()}
           </span>

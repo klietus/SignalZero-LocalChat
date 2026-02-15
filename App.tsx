@@ -681,7 +681,7 @@ function App() {
                     {/* Active Context Header Info */}
                     {activeContextId && (
                         <div className="px-4 pt-2 pb-0 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 font-mono">
-                            <span>Context: {activeContextId}</span>
+                            <span>Context: {activeContext?.name || activeContextId}</span>
                             {isCurrentContextProcessing && <span className="flex items-center gap-1 text-indigo-500"><Loader2 size={10} className="animate-spin"/> Processing</span>}
                         </div>
                     )}

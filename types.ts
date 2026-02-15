@@ -110,6 +110,7 @@ export type ContextStatus = 'open' | 'closed';
 
 export interface ContextSession {
   id: string;
+  name?: string;
   type: ContextType;
   status: ContextStatus;
   createdAt: string;
