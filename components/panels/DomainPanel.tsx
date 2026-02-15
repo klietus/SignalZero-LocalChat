@@ -40,7 +40,7 @@ export const DomainPanel: React.FC<DomainPanelProps> = ({ domain, onClose, onSym
         }
     };
     fetchDomains();
-  }, [isOpen]);
+  }, [isOpen, domain]);
 
   useEffect(() => {
     if (domain) {

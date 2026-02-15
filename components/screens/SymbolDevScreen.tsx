@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Plus, ChevronRight, Check, AlertTriangle, Loader2, Trash2, GitMerge, Layout, Box, ArrowRightLeft, X, User, UserCog, Database } from 'lucide-react';
+import { Save, Plus, ChevronRight, Check, AlertTriangle, Loader2, Trash2, GitMerge, Layout, Box, ArrowRightLeft, X, User, UserCog, Database, RefreshCcw } from 'lucide-react';
 import { domainService } from '../../services/domainService';
 import { userService, User as UserType } from '../../services/userService';
 import { SymbolDef, SymbolFacet } from '../../types';
@@ -397,8 +397,36 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
         members: [] as string[]
     });
 
-    // Data Payload State (Local text management for JSON editing)
     const [payloadText, setPayloadText] = useState("{}");
+    const [isLoading, setIsLoading] = useState(false);
+
+    // --- Actions ---
+    const loadDomains = async () => {
+        setIsLoading(true);
+        try {
+            const [domainList, meta, user] = await Promise.all([
+                domainService.listDomains(),
+                domainService.getMetadata(),
+                userService.getCurrentUser().catch(() => null)
+            ]);
+            
+            const localDomains = domainList.sort();
+            setDomains(localDomains);
+            setDomainMetadata(meta);
+            setCurrentUser(user);
+            return { localDomains, meta, user };
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRefresh = async () => {
+        const { localDomains } = await loadDomains();
+        if (selectedDomain && localDomains.includes(selectedDomain)) {
+            const cached = await domainService.getSymbols(selectedDomain);
+            setSymbolList(cached);
+        }
+    };
 
     // --- Effects ---
 
@@ -412,16 +440,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
     // Load Domains from Local Cache
     useEffect(() => {
         const init = async () => {
-            const [domainList, meta, user] = await Promise.all([
-                domainService.listDomains(),
-                domainService.getMetadata(),
-                userService.getCurrentUser().catch(() => null)
-            ]);
-            
-            const localDomains = domainList.sort();
-            setDomains(localDomains);
-            setDomainMetadata(meta);
-            setCurrentUser(user);
+            const { localDomains } = await loadDomains();
 
             // Determine Domain selection
             let targetDomain = selectedDomain;
@@ -434,7 +453,12 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                 targetDomain = localDomains[0];
             }
 
-            if (targetDomain) setSelectedDomain(targetDomain);
+            if (targetDomain) {
+                setSelectedDomain(targetDomain);
+                // Also trigger immediate symbol load for this domain
+                const cached = await domainService.getSymbols(targetDomain);
+                setSymbolList(cached);
+            }
 
             // Hydrate Symbol if passed (candidate/link)
             if (initialSymbol) {
@@ -877,6 +901,13 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
             {/* @ts-ignore */}
             <Header {...headerProps}>
                 <div className="flex items-center gap-4">
+                    <button
+                        onClick={handleRefresh}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-xs font-mono font-bold transition-colors border border-gray-200 dark:border-gray-700"
+                    >
+                        <RefreshCcw size={14} className={isLoading ? "animate-spin" : ""} />
+                        Refresh
+                    </button>
                     {saveMessage && (
                         <span className={`text-xs font-mono flex items-center gap-1 ${saveMessage.type === 'success' ? 'text-emerald-500' : 'text-amber-500'}`}>
                             {saveMessage.type === 'success' ? <Check size={14} /> : <AlertTriangle size={14} />}

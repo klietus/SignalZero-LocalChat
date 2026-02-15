@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ToggleLeft, ToggleRight, CloudDownload, Plus, Edit3, Loader2, ArrowRight, Download, Upload, Trash2, Settings, X, Shield, Tag, FileText, AlertTriangle, User as UserIcon, Globe } from 'lucide-react';
+import { ToggleLeft, ToggleRight, CloudDownload, Plus, Edit3, Loader2, ArrowRight, Download, Upload, Trash2, Settings, X, Shield, Tag, FileText, AlertTriangle, User as UserIcon, Globe, RefreshCcw } from 'lucide-react';
 import { domainService } from '../../services/domainService';
 import { userService, User } from '../../services/userService';
 import { SymbolDef } from '../../types';
@@ -176,6 +176,7 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
       <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
       <Header {...headerProps}>
          <div className="flex items-center gap-2">
+             <button onClick={loadData} className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-xs font-mono font-bold transition-colors border border-gray-200 dark:border-gray-700"><RefreshCcw size={14} className={loading ? "animate-spin" : ""} /> Refresh</button>
              <button onClick={handleImportClick} className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-xs font-mono font-bold transition-colors border border-gray-200 dark:border-gray-700"><Upload size={14} /> Import</button>
              <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-mono font-bold transition-colors"><Plus size={14} /> Create</button>
          </div>
