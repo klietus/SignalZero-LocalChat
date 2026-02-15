@@ -12,6 +12,8 @@ interface ProjectScreenProps {
   setProjectMeta: (meta: ProjectMeta) => void;
   systemPrompt: string;
   onSystemPromptChange: (newPrompt: string) => void;
+  mcpPrompt: string;
+  onMcpPromptChange: (newPrompt: string) => void;
   onClearChat: () => void;
   onImportProject: (file: File) => Promise<void>;
   onNewProject: () => void;
@@ -23,11 +25,14 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
     setProjectMeta,
     systemPrompt, 
     onSystemPromptChange,
+    mcpPrompt,
+    onMcpPromptChange,
     onClearChat,
     onImportProject,
     onNewProject
 }) => {
   const [promptText, setPromptText] = useState(systemPrompt);
+  const [mcpPromptText, setMcpPromptText] = useState(mcpPrompt);
 
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -43,9 +48,18 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
       setPromptText(systemPrompt);
   }, [systemPrompt]);
 
+  useEffect(() => {
+      setMcpPromptText(mcpPrompt);
+  }, [mcpPrompt]);
+
   const handleSavePrompt = () => {
       onSystemPromptChange(promptText);
       alert("System Prompt updated active context.");
+  };
+
+  const handleSaveMcpPrompt = () => {
+      onMcpPromptChange(mcpPromptText);
+      alert("MCP Prompt updated.");
   };
 
   const handleExportProject = async () => {
@@ -272,6 +286,37 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({
                       onChange={(e) => setPromptText(e.target.value)}
                       className="w-full h-96 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded p-4 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
                       spellCheck={false}
+                  />
+              </section>
+
+              {/* MCP Prompt Editor */}
+              <section className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2 mb-4">
+                      <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 font-mono flex items-center gap-2">
+                          <FileText size={16} /> MCP Prompt
+                      </h2>
+                      <button 
+                          onClick={handleSaveMcpPrompt}
+                          className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs font-mono font-bold transition-colors"
+                      >
+                          <Save size={12} /> Save MCP Prompt
+                      </button>
+                  </div>
+                  
+                  <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 p-3 rounded-lg text-xs text-blue-800 dark:text-blue-200 flex items-start gap-2 mb-4">
+                      <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                      <span>
+                          <strong>MCP Configuration:</strong> This prompt is exposed to the MCP server. 
+                          It will be available to MCP clients as 'project-prompt'.
+                      </span>
+                  </div>
+
+                  <textarea 
+                      value={mcpPromptText}
+                      onChange={(e) => setMcpPromptText(e.target.value)}
+                      className="w-full h-48 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded p-4 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                      spellCheck={false}
+                      placeholder="Enter MCP prompt here..."
                   />
               </section>
 

@@ -180,6 +180,7 @@ function App() {
   const [settingsInitialTab, setSettingsInitialTab] = useState('general');
   
   const [activeSystemPrompt, setActiveSystemPrompt] = useState<string>(ACTIVATION_PROMPT);
+  const [activeMcpPrompt, setActiveMcpPrompt] = useState<string>('');
   const [projectMeta, setProjectMeta] = useState<ProjectMeta>({
       name: 'SignalZero Project', author: 'User', version: '1.0.0', created_at: new Date().toISOString(), updated_at: new Date().toISOString()
   });
@@ -565,12 +566,14 @@ function App() {
       try {
           const result = await projectService.import(file);
           setActiveSystemPrompt(result.systemPrompt);
+          setActiveMcpPrompt(result.mcpPrompt);
           setImportStats(result.stats);
           
           const meta = await projectService.getActive();
           if (meta) setProjectMeta(meta);
           
           await setSystemPrompt(result.systemPrompt);
+          await projectService.setMcpPrompt(result.mcpPrompt);
       } catch (e) {
           console.error("Import failed", e);
           alert("Failed to import project: " + String(e));
@@ -585,6 +588,7 @@ function App() {
       if (appState !== 'app' || !isServerConnected) return;
       projectService.getActive().then(meta => { if(meta) setProjectMeta(meta); }).catch(() => {});
       getSystemPrompt().then(p => { if(p) setActiveSystemPrompt(p); }).catch(() => {});
+      projectService.getMcpPrompt().then(p => { if(p !== undefined) setActiveMcpPrompt(p); }).catch(() => {});
   }, [appState, isServerConnected]);
 
   // Refresh system prompt when entering project view
@@ -593,6 +597,9 @@ function App() {
           getSystemPrompt().then(p => {
               if (p) setActiveSystemPrompt(p);
           }).catch(err => console.error("Failed to refresh system prompt", err));
+          projectService.getMcpPrompt().then(p => {
+              if (p !== undefined) setActiveMcpPrompt(p);
+          }).catch(err => console.error("Failed to refresh MCP prompt", err));
       }
   }, [currentView, isServerConnected, appState]);
 
@@ -639,6 +646,8 @@ function App() {
                     setProjectMeta={setProjectMeta} 
                     systemPrompt={activeSystemPrompt} 
                     onSystemPromptChange={(val) => { setActiveSystemPrompt(val); setSystemPrompt(val); }} 
+                    mcpPrompt={activeMcpPrompt}
+                    onMcpPromptChange={(val) => { setActiveMcpPrompt(val); projectService.setMcpPrompt(val); }}
                     onClearChat={() => {}} 
                     onImportProject={handleImportProject} 
                     onNewProject={() => {}} 
