@@ -82,6 +82,10 @@ export interface GoogleSearchSettings {
   cx?: string;
 }
 
+export interface SerpApiSettings {
+  apiKey?: string;
+}
+
 export interface VoiceSettings {
   pulseServer?: string;
   wakeWord?: string;
@@ -92,6 +96,7 @@ export interface SystemSettings {
   chroma?: ChromaSettings;
   inference?: InferenceSettings;
   googleSearch?: GoogleSearchSettings;
+  serpApi?: SerpApiSettings;
   voice?: VoiceSettings;
   geminiKey?: string;
 }
@@ -101,6 +106,7 @@ export interface SystemSettingsUpdate {
   chroma?: Partial<ChromaSettings>;
   inference?: InferenceSettingsUpdate;
   googleSearch?: GoogleSearchSettings;
+  serpApi?: SerpApiSettings;
   voice?: VoiceSettings;
   geminiKey?: string;
 }

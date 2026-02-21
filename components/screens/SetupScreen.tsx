@@ -20,6 +20,9 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
     const [googleSearchKey, setGoogleSearchKey] = useState('');
     const [googleSearchCx, setGoogleSearchCx] = useState('');
 
+    // SerpApi
+    const [serpApiKey, setSerpApiKey] = useState('');
+
     // Inference Settings
     const [inferenceProvider, setInferenceProvider] = useState<'local' | 'openai' | 'gemini' | 'kimi2'>('local');
     const [inferenceApiKey, setInferenceApiKey] = useState('');
@@ -83,6 +86,9 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                     googleSearch: {
                         apiKey: googleSearchKey,
                         cx: googleSearchCx
+                    },
+                    serpApi: {
+                        apiKey: serpApiKey
                     }
                 })
             });
@@ -255,6 +261,19 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                                         placeholder="Optional"
                                         className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                                     />
+                                </div>
+                                <div className="pt-2">
+                                    <label className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono block mb-1 flex items-center gap-2">
+                                        <Search size={12} className="text-emerald-500"/> SerpApi Key (Recommended)
+                                    </label>
+                                    <input 
+                                        type="password" 
+                                        value={serpApiKey}
+                                        onChange={(e) => setSerpApiKey(e.target.value)}
+                                        placeholder="Optional"
+                                        className="w-full bg-gray-100 dark:bg-gray-950 border border-emerald-200 dark:border-emerald-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                    />
+                                    <p className="text-[10px] text-gray-500 mt-1">SerpApi is recommended for superior search results.</p>
                                 </div>
                             </div>
                         </section>
