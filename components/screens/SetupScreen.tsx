@@ -16,10 +16,6 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
-    // Google Search
-    const [googleSearchKey, setGoogleSearchKey] = useState('');
-    const [googleSearchCx, setGoogleSearchCx] = useState('');
-
     // SerpApi
     const [serpApiKey, setSerpApiKey] = useState('');
 
@@ -83,10 +79,6 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                     username,
                     password,
                     inference: inferenceConfig,
-                    googleSearch: {
-                        apiKey: googleSearchKey,
-                        cx: googleSearchCx
-                    },
                     serpApi: {
                         apiKey: serpApiKey
                     }
@@ -242,26 +234,6 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                                 Search Engine Configuration
                             </h3>
                             <div className="space-y-3">
-                                <div>
-                                    <label className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono block mb-1 flex items-center gap-2"><Search size={12}/> Google Custom Search API Key</label>
-                                    <input 
-                                        type="password" 
-                                        value={googleSearchKey}
-                                        onChange={(e) => setGoogleSearchKey(e.target.value)}
-                                        placeholder="Optional"
-                                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono block mb-1">Search Engine ID (CX)</label>
-                                    <input 
-                                        type="text" 
-                                        value={googleSearchCx}
-                                        onChange={(e) => setGoogleSearchCx(e.target.value)}
-                                        placeholder="Optional"
-                                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                                    />
-                                </div>
                                 <div className="pt-2">
                                     <label className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono block mb-1 flex items-center gap-2">
                                         <Search size={12} className="text-emerald-500"/> SerpApi Key (Recommended)

@@ -77,11 +77,6 @@ export interface InferenceSettingsUpdate {
   visionModel?: string;
 }
 
-export interface GoogleSearchSettings {
-  apiKey?: string;
-  cx?: string;
-}
-
 export interface SerpApiSettings {
   apiKey?: string;
 }
@@ -95,7 +90,6 @@ export interface SystemSettings {
   redis?: RedisSettings;
   chroma?: ChromaSettings;
   inference?: InferenceSettings;
-  googleSearch?: GoogleSearchSettings;
   serpApi?: SerpApiSettings;
   voice?: VoiceSettings;
   geminiKey?: string;
@@ -105,7 +99,6 @@ export interface SystemSettingsUpdate {
   redis?: Partial<RedisSettings>;
   chroma?: Partial<ChromaSettings>;
   inference?: InferenceSettingsUpdate;
-  googleSearch?: GoogleSearchSettings;
   serpApi?: SerpApiSettings;
   voice?: VoiceSettings;
   geminiKey?: string;

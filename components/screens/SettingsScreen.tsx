@@ -32,10 +32,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [chromaPort, setChromaPort] = useState('');
   const [chromaCollection, setChromaCollection] = useState('');
   
-  // Google Search State
-  const [googleSearchKey, setGoogleSearchKey] = useState('');
-  const [googleSearchCx, setGoogleSearchCx] = useState('');
-
   // SerpApi State
   const [serpApiKey, setSerpApiKey] = useState('');
   
@@ -113,7 +109,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     const redis = settings.redis || {};
     const chroma = settings.chroma || {};
     const inference = settings.inference || {};
-    const googleSearch = settings.googleSearch || {};
     const serpApi = settings.serpApi || {};
     const voice = settings.voice || {};
 
@@ -130,9 +125,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     setChromaHost(host || chromaUrl);
     setChromaPort(port);
     setChromaCollection(chroma.collection || chroma.collectionName || 'signalzero');
-
-    setGoogleSearchKey(googleSearch.apiKey || '');
-    setGoogleSearchCx(googleSearch.cx || '');
 
     setSerpApiKey(serpApi.apiKey || '');
 
@@ -327,10 +319,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             chroma: { 
                 url: chromaUrl || undefined,
                 collection: chromaCollection || undefined
-            },
-            googleSearch: {
-                apiKey: googleSearchKey || undefined,
-                cx: googleSearchCx || undefined
             },
             serpApi: {
                 apiKey: serpApiKey || undefined
@@ -670,35 +658,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                           </div>
 
                           <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-6">
-                              {/* Google Search */}
-                              <div className="space-y-4">
-                                  <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100 font-bold border-b border-gray-100 dark:border-gray-800 pb-2">
-                                      <Search size={16} className="text-blue-500" /> Google Custom Search
-                                  </div>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <div className="space-y-2">
-                                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">API Key</label>
-                                          <input
-                                              type="password"
-                                              value={googleSearchKey}
-                                              onChange={(e) => setGoogleSearchKey(e.target.value)}
-                                              className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
-                                          />
-                                      </div>
-                                      <div className="space-y-2">
-                                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">Search Engine ID (CX)</label>
-                                          <input
-                                              type="text"
-                                              value={googleSearchCx}
-                                              onChange={(e) => setGoogleSearchCx(e.target.value)}
-                                              className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
-                                          />
-                                      </div>
-                                  </div>
-                              </div>
-
                               {/* SerpApi */}
-                              <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                              <div className="space-y-4">
                                   <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100 font-bold border-b border-gray-100 dark:border-gray-800 pb-2">
                                       <Search size={16} className="text-emerald-500" /> SerpApi (Recommended)
                                   </div>
