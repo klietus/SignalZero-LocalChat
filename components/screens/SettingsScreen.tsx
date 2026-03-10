@@ -203,9 +203,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               setInferenceVisionModel('kimi-k2-thinking');
               setInferenceEndpoint('');
           } else {
-              setInferenceModel('lmstudio-community/Meta-Llama-3-70B-Instruct');
-              setInferenceAgentModel('lmstudio-community/Meta-Llama-3-70B-Instruct');
-              setInferenceVisionModel('gpt-4o-mini');
+              setInferenceModel('qwen/qwen3.5-9b');
+              setInferenceAgentModel('qwen/qwen3.5-9b');
+              setInferenceVisionModel('qwen/qwen3.5-9b');
               setInferenceEndpoint('');
           }
       }

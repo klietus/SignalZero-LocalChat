@@ -61,8 +61,8 @@ export const TracePanel: React.FC<TracePanelProps> = ({
   return (
     <>
       {/* Slide-out Panel (Left Side) */}
-      <div 
-        className={`fixed inset-y-0 left-0 w-full md:w-[600px] bg-gray-50 dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out z-40 flex flex-col ${
+      <div
+        className={`fixed inset-y-0 left-0 w-full md:w-[600px] bg-gray-50 dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out z-[60] flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -73,10 +73,10 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                 Recursive Reasoning Log
             </h2>
             <div className="flex items-center gap-2">
-                
+
                 {/* Download Dropdown */}
                 <div className="relative">
-                    <button 
+                    <button
                         onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)}
                         className="flex items-center gap-1 px-2 py-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors font-mono text-xs"
                         title="Export Traces"
@@ -87,11 +87,10 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                     </button>
 
                     {isDownloadMenuOpen && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl z-50 py-1 flex flex-col">
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl z-[70] py-1 flex flex-col">
                             <button
                                 onClick={() => activeTrace && downloadJson(activeTrace, `signalzero_trace_${activeTrace.id}`)}
-                                disabled={!activeTrace}
-                                className="w-full text-left px-4 py-2 text-xs font-mono text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+                                disabled={!activeTrace}                                className="w-full text-left px-4 py-2 text-xs font-mono text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
                             >
                                 Download Current Trace
                             </button>

@@ -164,7 +164,7 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
     <>
       {/* Slide-out Panel */}
       <div 
-        className={`fixed inset-y-0 right-0 w-full md:w-[480px] bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 flex flex-col ${
+        className={`fixed inset-y-0 right-0 w-full md:w-[480px] bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out z-[60] flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
