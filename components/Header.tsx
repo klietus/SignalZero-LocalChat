@@ -2,7 +2,7 @@
 import React from 'react';
 import {
   FolderOpen, Database, Hammer, FlaskConical, MessageSquare,
-  Network, Settings, HelpCircle, ShieldCheck, RefreshCcw, Users, Zap, LogOut, User as UserIcon
+  Network, Settings, HelpCircle, ShieldCheck, RefreshCcw, Users, Zap, LogOut, User as UserIcon, Activity
 } from 'lucide-react';
 
 export interface HeaderProps {
@@ -21,6 +21,7 @@ export interface HeaderProps {
   onOpenSettings?: () => void;
   onNavigateToUsers?: () => void;
   onLogout?: () => void;
+  onMonitor?: () => void;
   
   projectName?: string;
   userRole?: string;
@@ -38,6 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
   isTraceOpen,
   onOpenSettings,
   onLogout,
+  onMonitor,
   projectName,
   userRole,
   userName
@@ -125,6 +127,12 @@ export const Header: React.FC<HeaderProps> = ({
             )}
 
             <div className="h-4 w-px bg-gray-300 dark:bg-gray-700 mx-2"></div>
+
+            {onMonitor && (
+                <button onClick={onMonitor} className="p-2 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors" title="Pop-out Kernel Monitor">
+                    <Activity size={18} />
+                </button>
+            )}
 
             {onToggleTrace && (
                 <button 

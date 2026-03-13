@@ -1,5 +1,5 @@
 import { apiFetch } from './api';
-import { ContextMessage, ContextSession, ContextHistoryGroup } from '../types';
+import { ContextMessage, ContextSession, ContextHistoryGroup, SymbolDef } from '../types';
 
 export const contextService = {
     async list(): Promise<ContextSession[]> {
@@ -32,5 +32,11 @@ export const contextService = {
             throw new Error('Failed to fetch context history');
         }
         return res.json();
-    }
-};
+        },
+
+        async getCache(id: string): Promise<SymbolDef[]> {
+        const res = await apiFetch(`/cache/${encodeURIComponent(id)}`);
+        if (!res.ok) return [];
+        return await res.json();
+        }
+        };

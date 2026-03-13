@@ -21,6 +21,7 @@ import { ServerConnectScreen } from './components/screens/ServerConnectScreen';
 import { LoginScreen } from './components/screens/LoginScreen';
 import { SetupScreen } from './components/screens/SetupScreen';
 import { AgentsScreen } from './components/screens/AgentsScreen';
+import { CinematicView } from './components/screens/CinematicView';
 
 import { sendMessage, stopMessage, setSystemPrompt, getSystemPrompt } from './services/gemini';
 import { domainService } from './services/domainService';
@@ -168,6 +169,12 @@ const mergeHistoryGroups = (existing: ContextHistoryGroup[], incoming: ContextHi
 function App() {
   const defaultUser: UserProfile = { name: "Guest Developer", email: "dev@signalzero.local", picture: "" };
   
+  // Handle Pop-out Monitor View
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('view') === 'monitor') {
+      return <CinematicView />;
+  }
+
   // State
   const [activeContextId, setActiveContextId] = useState<string | null>(null);
   const [contexts, setContexts] = useState<ContextSession[]>([]);
@@ -176,7 +183,7 @@ function App() {
   const [processingContexts, setProcessingContexts] = useState<Set<string>>(new Set());
   
   const [user, setUser] = useState<UserProfile>(defaultUser);
-  const [currentView, setCurrentView] = useState<'context' | 'chat' | 'dev' | 'store' | 'test' | 'project' | 'help' | 'agents' | 'settings'>('chat');
+  const [currentView, setCurrentView] = useState<'context' | 'chat' | 'dev' | 'store' | 'test' | 'project' | 'help' | 'agents' | 'settings' | 'monitor'>('chat');
   const [settingsInitialTab, setSettingsInitialTab] = useState('general');
   
   const [activeSystemPrompt, setActiveSystemPrompt] = useState<string>(ACTIVATION_PROMPT);
@@ -555,6 +562,9 @@ function App() {
           console.log("[App] onNavigateToUsers click");
           setSettingsInitialTab('users'); 
           setCurrentView('settings'); 
+      },
+      onMonitor: () => {
+          window.open(window.location.origin + window.location.pathname + '?view=monitor', 'SZMonitor', 'width=1200,height=800');
       },
       onLogout: handleLogout,
       projectName: projectMeta.name, 
