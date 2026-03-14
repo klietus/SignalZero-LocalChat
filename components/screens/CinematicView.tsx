@@ -31,14 +31,37 @@ interface GraphLink {
 }
 
 export const CinematicView: React.FC = () => {
+    console.log("[Monitor] CinematicView Rendering - Build: " + new Date().toISOString());
     const containerRef = useRef<HTMLDivElement>(null);
     const graphRef = useRef<any>(null);
     const [eventLog, setEventLog] = useState<{ id: string, type: string, message: string, status: 'pending' | 'processing' | 'done' }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [webglError, setWebglError] = useState<string | null>(null);
     const [stats, setStats] = useState({ nodes: 0, links: 0 });
+    const [showTraceDialog, setShowTraceDialog] = useState(false);
+    const [traceInput, setTraceInput] = useState("");
+    const [transientMessage, setTransientMessage] = useState<{ text: string, type?: string } | null>(null);
     const eventQueue = useRef<any[]>([]);
+    const lastEventTime = useRef<number>(Date.now());
     const graphData = useRef<{ nodes: GraphNode[], links: GraphLink[] }>({ nodes: [], links: [] });
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        window.focus(); // Try to grab focus
+        
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Use keyup for broader compatibility if keydown is swallowed
+            if (e.key.toLowerCase() === 't') {
+                if (document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT') return;
+                setShowTraceDialog(prev => !prev);
+            }
+            if (e.key === 'Escape') {
+                setShowTraceDialog(false);
+            }
+        };
+        window.addEventListener('keyup', handleKeyDown);
+        return () => window.removeEventListener('keyup', handleKeyDown);
+    }, []);
 
     // WebGL Check
     const isWebglSupported = () => {
@@ -212,17 +235,59 @@ export const CinematicView: React.FC = () => {
                                 return node ? node.color : '#444444';
                             })
                             .backgroundColor('#020202')
-                            .showNavInfo(false);
+                            .showNavInfo(false)
+                            .onNodeDrag(() => { lastEventTime.current = Date.now(); })
+                            .onBackgroundClick(() => { lastEventTime.current = Date.now(); });
 
                         window.addEventListener('resize', handleResize);
+                        
+                        // Detect manual interaction (grab/rotate) to end idle
+                        const handleUserActivity = (e: MouseEvent) => {
+                            if (e.buttons > 0) { // Any button pressed during move
+                                lastEventTime.current = Date.now();
+                            }
+                        };
+                        window.addEventListener('mousemove', handleUserActivity);
 
-                        // Animation loop for gentle pulsing of cached nodes
+                        // Animation loop
                         const animate = () => {
                             if (!graphRef.current) return;
                             
-                            const time = Date.now() * 0.002;
-                            const pulse = (Math.sin(time) + 1) * 0.5; // 0 to 1
+                            const time = Date.now();
+                            const timeSeconds = time * 0.002;
+                            const pulse = (Math.sin(timeSeconds) + 1) * 0.5; // 0 to 1
                             
+                            // 1. Idle Cinematic Animation
+                            const camera = graphRef.current.camera();
+                            const controls = graphRef.current.controls();
+                            const isIdle = (time - lastEventTime.current) > 10000;
+
+                            if (camera && controls && !showTraceDialog && isIdle) {
+                                // 1a. Slow Orbital Rotation around (0,0,0)
+                                const angle = 0.0005;
+                                const x = camera.position.x;
+                                const z = camera.position.z;
+                                camera.position.x = x * Math.cos(angle) - z * Math.sin(angle);
+                                camera.position.z = x * Math.sin(angle) + z * Math.cos(angle);
+                                
+                                // 1b. Slow Zoom towards core view (target distance ~1600)
+                                const targetDist = 1600;
+                                const currentDist = Math.hypot(camera.position.x, camera.position.y, camera.position.z);
+                                const distDiff = targetDist - currentDist;
+                                if (Math.abs(distDiff) > 1) {
+                                    const zoomStep = distDiff * 0.002; // Very slow cinematic zoom
+                                    const ratio = (currentDist + zoomStep) / currentDist;
+                                    camera.position.x *= ratio;
+                                    camera.position.y *= ratio;
+                                    camera.position.z *= ratio;
+                                }
+
+                                // Always look at origin in idle
+                                camera.lookAt(0, 0, 0);
+                                controls.target.set(0, 0, 0);
+                            }
+
+                            // 2. Pulse cached nodes
                             graphRef.current.scene().traverse((obj: any) => {
                                 if (obj.type === 'Group' && obj.userData && obj.userData.isCached) {
                                     const core = obj.children[0];
@@ -308,6 +373,38 @@ export const CinematicView: React.FC = () => {
         processNextEvent();
     }, []);
 
+    const handleManualTrace = async () => {
+        if (!traceInput.trim()) return;
+        
+        try {
+            const data = JSON.parse(traceInput);
+            const path = data.activation_path || data.trace?.activation_path;
+            
+            if (!path || !Array.isArray(path)) {
+                alert("Invalid trace format: Missing activation_path");
+                return;
+            }
+
+            const nodeIds = path
+                .filter((step: any) => step.symbol_id)
+                .map((step: any) => step.symbol_id);
+
+            if (nodeIds.length === 0) {
+                alert("Invalid trace: No symbol_ids found in path");
+                return;
+            }
+
+            setShowTraceDialog(false);
+            setTraceInput("");
+            
+            // Start flight
+            await flyToPath(nodeIds);
+            
+        } catch (e: any) {
+            alert(`Failed to parse trace: ${e.message}`);
+        }
+    };
+
     const isNodeVisible = (node: any) => {
         if (!graphRef.current) return false;
         const camera = graphRef.current.camera();
@@ -391,18 +488,82 @@ export const CinematicView: React.FC = () => {
         return baseSize + (Math.log10(linkCount + 1) * 8);
     };
 
-    const pulseNode = async (nodeId: string, color?: string) => {
+    const flyToPath = async (nodeIds: string[]) => {
+        if (!graphRef.current) {
+            console.warn("[Monitor] flyToPath failed: graphRef.current is null");
+            return;
+        }
+        
+        console.log(`[Monitor] flyToPath starting for ${nodeIds.length} nodes`);
+
+        // 1. Initial zoom out to see the start
+        const firstNode = graphData.current.nodes.find(n => n.id === nodeIds[0]);
+        if (firstNode) {
+            console.log(`[Monitor] Initial focus: ${firstNode.id} at (${firstNode.x}, ${firstNode.y}, ${firstNode.z})`);
+            if (!isNodeVisible(firstNode)) {
+                graphRef.current.cameraPosition(
+                    { x: (firstNode.x || 0) * 1.5, y: (firstNode.y || 0) * 1.5, z: (firstNode.z || 0) * 1.5 },
+                    firstNode,
+                    2000
+                );
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+
+        // 2. Sequential traversal
+        for (const nodeId of nodeIds) {
+            const node = graphData.current.nodes.find(n => n.id === nodeId);
+            if (node) {
+                console.log(`[Monitor] Flying to: ${node.id} at (${node.x}, ${node.y}, ${node.z})`);
+                // Fly to node
+                const distance = 120;
+                const nodeX = node.x || 0;
+                const nodeY = node.y || 0;
+                const nodeZ = node.z || 0;
+                const hyp = Math.hypot(nodeX, nodeY, nodeZ) || 1;
+                const distRatio = 1 + distance / hyp;
+                
+                graphRef.current.cameraPosition(
+                    { x: nodeX * distRatio, y: nodeY * distRatio, z: nodeZ * distRatio }, 
+                    node, 
+                    1200 // Faster sequential movement
+                );
+                
+                // Active effects while moving
+                await pulseNode(nodeId, undefined, true); // No camera move inside pulse
+                await new Promise(resolve => setTimeout(resolve, 800));
+            } else {
+                console.warn(`[Monitor] flyToPath: Node ${nodeId} not found in graphData`);
+            }
+        }
+
+        // 3. Final cinematic pull back
+        const lastNode = graphData.current.nodes.find(n => n.id === nodeIds[nodeIds.length - 1]);
+        if (lastNode) {
+            graphRef.current.cameraPosition(
+                { x: (lastNode.x || 0) * 2, y: (lastNode.y || 0) * 2, z: (lastNode.z || 0) * 2 },
+                { x: 0, y: 0, z: 0 },
+                2000
+            );
+        }
+    };
+
+    const pulseNode = async (nodeId: string, color?: string, skipCameraMove = false) => {
         const node = graphData.current.nodes.find(n => n.id === nodeId);
         if (node && graphRef.current) {
+            setTransientMessage({ text: node.name, type: 'FOCUS' });
             const scene = graphRef.current.scene();
             
             // Only move camera if node is not visible
-            if (!isNodeVisible(node)) {
+            if (!skipCameraMove && !isNodeVisible(node)) {
                 const distance = 80;
-                const distRatio = 1 + distance / Math.hypot(node.x || 0, node.y || 0, node.z || 0);
+                const nodeX = node.x || 0;
+                const nodeY = node.y || 0;
+                const nodeZ = node.z || 0;
+                const distRatio = 1 + distance / Math.hypot(nodeX, nodeY, nodeZ);
 
                 graphRef.current.cameraPosition(
-                    { x: (node.x || 0) * distRatio, y: (node.y || 0) * distRatio, z: (node.z || 0) * distRatio }, 
+                    { x: nodeX * distRatio, y: nodeY * distRatio, z: nodeZ * distRatio }, 
                     node, 
                     2000
                 );
@@ -419,11 +580,26 @@ export const CinematicView: React.FC = () => {
             // Create Burst
             createParticleBurst(node.x || 0, node.y || 0, node.z || 0, node.color);
 
-            const originalVal = node.val;
-            node.val = originalVal * 4; // Pronounced pulse
-            graphRef.current.graphData(graphData.current);
-            
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Pulse duration
+            // DIRECT MESH PULSE (Avoid graphData update to prevent twitches)
+            let nodeObj: any = null;
+            scene.traverse((obj: any) => {
+                if (obj.type === 'Group' && obj.__data && obj.__data.id === nodeId) {
+                    nodeObj = obj;
+                }
+            });
+
+            if (nodeObj) {
+                const originalScale = nodeObj.scale.x;
+                nodeObj.scale.set(originalScale * 3, originalScale * 3, originalScale * 3);
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Subsidence
+                nodeObj.scale.set(originalScale, originalScale, originalScale);
+            } else {
+                // Fallback for safety (though mesh pulse is preferred)
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
             
             // Fade out label
             let labelOpacity = 1;
@@ -438,9 +614,8 @@ export const CinematicView: React.FC = () => {
             };
             fadeLabel();
 
-            node.val = originalVal;
-            graphRef.current.graphData(graphData.current);
             await new Promise(resolve => setTimeout(resolve, 500)); // Breathe
+            setTransientMessage(null);
         }
     };
 
@@ -519,6 +694,7 @@ export const CinematicView: React.FC = () => {
     };
 
     const ensureNodeExists = async (symbolId: string) => {
+        if (!symbolId || symbolId === 'undefined') return false;
         if (graphData.current.nodes.find(n => n.id === symbolId)) return true;
         
         try {
@@ -546,8 +722,12 @@ export const CinematicView: React.FC = () => {
         const eventId = Math.random().toString(36).substring(7);
         let logMsg = "";
 
+        // Reset idle timer
+        lastEventTime.current = Date.now();
+
         switch (type) {
             case 'SYMBOL_ADD': logMsg = `Added Symbol: ${data.symbolId}`; break;
+            case 'SYMBOL_UPDATE': logMsg = `Updated Symbol: ${data.symbolId}`; break;
             case 'CACHE_LOAD': logMsg = `Cache Load: ${data.symbolIds?.length || 1} symbols`; break;
             case 'CACHE_EVICT': logMsg = `Cache Evict: ${data.symbolIds?.length || 0} symbols`; break;
             case 'LINK_CREATE': logMsg = `Linked: ${data.sourceId} -> ${data.targetId}`; break;
@@ -557,15 +737,21 @@ export const CinematicView: React.FC = () => {
         }
 
         if (logMsg) {
-            const newEntry = { id: eventId, type, message: logMsg, status: 'processing' as const };
-            setEventLog(prev => [newEntry, ...prev].slice(0, 15));
+            setTransientMessage({ text: logMsg, type });
+            // Auto-clear after duration unless it's a FOCUS message (handled by pulseNode)
+            if (type !== 'FOCUS') {
+                setTimeout(() => setTransientMessage(prev => prev?.text === logMsg ? null : prev), 3000);
+            }
         }
 
         switch (type) {
-            case 'SYMBOL_ADD': {
+            case 'SYMBOL_ADD': 
+            case 'SYMBOL_UPDATE': {
                 const s = data.symbol;
                 let isNew = false;
-                if (!graphData.current.nodes.find(n => n.id === s.id)) {
+                const existingNode = graphData.current.nodes.find(n => n.id === s.id);
+                
+                if (!existingNode) {
                     graphData.current.nodes.push({
                         id: s.id,
                         name: s.name,
@@ -575,18 +761,26 @@ export const CinematicView: React.FC = () => {
                         isCached: false
                     });
                     isNew = true;
+                } else {
+                    // Update existing
+                    existingNode.name = s.name;
+                    existingNode.domain = data.domainId;
+                    existingNode.color = getDomainColor(data.domainId);
                 }
 
                 // Process initial links to ensure targets exist
-                if (s.linked_patterns) {
+                if (s.linked_patterns && Array.isArray(s.linked_patterns)) {
                     for (const link of s.linked_patterns) {
-                        const targetId = link.id;
-                        await ensureNodeExists(targetId);
+                        const targetId = link?.id;
+                        if (!targetId || targetId === 'undefined') continue;
+
+                        const exists = await ensureNodeExists(targetId);
+                        if (!exists) continue;
                         
                         const linkExists = graphData.current.links.some(l => {
-                            const src = typeof l.source === 'string' ? l.source : (l.source as any).id;
-                            const tgt = typeof l.target === 'string' ? l.target : (l.target as any).id;
-                            return (src === s.id && tgt === targetId) || (src === targetId && tgt === s.id);
+                            const src = typeof l.source === 'string' ? l.source : (l.source as any)?.id;
+                            const tgt = typeof l.target === 'string' ? l.target : (l.target as any)?.id;
+                            return src && tgt && ((src === s.id && tgt === targetId) || (src === targetId && tgt === s.id));
                         });
 
                         if (!linkExists) {
@@ -608,7 +802,6 @@ export const CinematicView: React.FC = () => {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     await pulseNode(s.id);
                 }
-                logMsg = `Added Symbol: ${s.id}`;
                 break;
             }
             case 'CACHE_LOAD': {
@@ -638,6 +831,9 @@ export const CinematicView: React.FC = () => {
                 // Cinematic pause before eviction
                 await new Promise(resolve => setTimeout(resolve, 500));
 
+                // Stop engine to avoid twitches during batch update
+                graphRef.current?.pauseAnimation();
+
                 symbolIds.forEach((id: string) => {
                     const node = graphData.current.nodes.find(n => n.id === id);
                     if (node) {
@@ -646,7 +842,9 @@ export const CinematicView: React.FC = () => {
                         syncNodeObject(id, false);
                     }
                 });
-                graphRef.current.graphData(graphData.current);
+                
+                graphRef.current?.graphData(graphData.current);
+                graphRef.current?.resumeAnimation();
                 break;
             }
             case 'LINK_CREATE': {
@@ -770,19 +968,26 @@ export const CinematicView: React.FC = () => {
             case 'TRACE_GENERATE': {
                 const { trace } = data;
                 if (trace.activation_path) {
-                    for (const step of trace.activation_path) {
-                        if (step.symbol_id) {
-                            await pulseNode(step.symbol_id);
-                        }
+                    const steps = trace.activation_path.filter((step: any) => step.symbol_id);
+                    
+                    // 1. Ensure all nodes exist (no temporary highlighting to avoid twitches)
+                    for (const step of steps) {
+                        await ensureNodeExists(step.symbol_id);
+                    }
+
+                    // 2. Wait for force layout to position any new nodes
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    // 3. Initiate flight
+                    const nodeIds = steps.map((step: any) => step.symbol_id);
+                    if (nodeIds.length > 0) {
+                        console.log(`[Monitor] Starting flight for trace path: ${nodeIds.join(' -> ')}`);
+                        await flyToPath(nodeIds);
                     }
                 }
                 break;
             }
         }
-
-        // Wait 2 seconds while highlighted before fading
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setEventLog(prev => prev.map(entry => entry.id === eventId ? { ...entry, status: 'done' } : entry));
     };
 
     const getDomainColor = (domain: string) => {
@@ -805,6 +1010,7 @@ export const CinematicView: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-4 text-[10px] text-gray-500">
                     <span>Events in Queue: {eventQueue.current.length}</span>
+                    
                     <button onClick={() => window.close()} className="p-1 hover:text-white transition-colors">
                         <X size={16} />
                     </button>
@@ -847,20 +1053,55 @@ export const CinematicView: React.FC = () => {
                 )}
             </div>
 
-            {/* Event Ticker */}
-            <div className="h-32 border-t border-white/10 bg-black/90 p-4 overflow-hidden relative">
-                <div className="absolute top-0 left-0 w-full h-[1px] bg-emerald-500/30"></div>
-                <div className="space-y-1">
-                    {eventLog.map((log, i) => (
-                        <div key={log.id} className={`text-[10px] flex gap-6 transition-opacity duration-1000 ${log.status === 'done' ? 'opacity-20' : 'opacity-100'} ${log.status === 'processing' ? 'text-emerald-400 font-bold' : 'text-gray-500'}`}>
-                            <span className="w-32 shrink-0 tracking-widest">[{log.type}]</span>
-                            <span className="truncate">{log.message}</span>
+            {/* Trace Manual Dialog */}
+            {showTraceDialog && (
+                <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
+                    <div className="bg-zinc-900 border border-white/20 rounded-xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden">
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                            <h2 className="text-sm font-bold uppercase tracking-widest text-emerald-500">Inject Manual Trace</h2>
+                            <button onClick={() => setShowTraceDialog(false)} className="text-gray-500 hover:text-white transition-colors">
+                                <X size={18} />
+                            </button>
                         </div>
-                    ))}
+                        <div className="p-6 space-y-4">
+                            <p className="text-[10px] text-gray-400 leading-relaxed uppercase tracking-tight">
+                                Paste a symbolic trace JSON (with activation_path) to initiate a cinematic flight route across the kernel graph.
+                            </p>
+                            <textarea 
+                                autoFocus
+                                value={traceInput}
+                                onChange={(e) => setTraceInput(e.target.value)}
+                                className="w-full h-64 bg-black border border-white/10 rounded-lg p-4 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500/50 transition-colors"
+                                placeholder='{ "activation_path": [ { "symbol_id": "S1" }, ... ] }'
+                            />
+                        </div>
+                        <div className="p-4 bg-black/40 border-t border-white/10 flex justify-end gap-3">
+                            <button 
+                                onClick={() => setShowTraceDialog(false)}
+                                className="px-4 py-2 text-xs font-bold uppercase text-gray-500 hover:text-white transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleManualTrace}
+                                disabled={!traceInput.trim()}
+                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold uppercase rounded-lg transition-all shadow-lg shadow-emerald-900/20"
+                            >
+                                Initiate Flight Route
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                {eventLog.length === 0 && (
-                    <div className="h-full flex items-center justify-center text-gray-700 italic text-xs">
-                        Awaiting Kernel Operations...
+            )}
+
+            {/* Minimalist Transient Status */}
+            <div className="h-16 flex items-center justify-center pointer-events-none relative">
+                {transientMessage && (
+                    <div className="flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>
+                        <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-emerald-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                            {transientMessage.text}
+                        </span>
                     </div>
                 )}
             </div>
