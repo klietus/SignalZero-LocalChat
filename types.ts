@@ -56,6 +56,7 @@ export interface InferenceConfiguration {
   model: string;
   agentModel: string;
   visionModel: string;
+  fastModel: string;
 }
 
 export interface InferenceSettings {
@@ -65,6 +66,7 @@ export interface InferenceSettings {
   model?: string;
   agentModel?: string;
   visionModel?: string;
+  fastModel?: string;
   savedConfigs?: Record<string, InferenceConfiguration>;
 }
 
@@ -75,6 +77,7 @@ export interface InferenceSettingsUpdate {
   model?: string;
   agentModel?: string;
   visionModel?: string;
+  fastModel?: string;
 }
 
 export interface SerpApiSettings {

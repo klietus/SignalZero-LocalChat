@@ -47,6 +47,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [inferenceModel, setInferenceModel] = useState('');
   const [inferenceAgentModel, setInferenceAgentModel] = useState('');
   const [inferenceVisionModel, setInferenceVisionModel] = useState('');
+  const [inferenceFastModel, setInferenceFastModel] = useState('');
 
   // Voice Server State
   const [pulseServer, setPulseServer] = useState('');
@@ -138,6 +139,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     setInferenceModel(inference.model || '');
     setInferenceAgentModel(inference.agentModel || inference.model || '');
     setInferenceVisionModel(inference.visionModel || '');
+    setInferenceFastModel(inference.fastModel || '');
     
     // Load saved configs
     if (inference.savedConfigs) {
@@ -151,7 +153,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 endpoint: inference.endpoint,
                 model: inference.model,
                 agentModel: inference.agentModel,
-                visionModel: inference.visionModel
+                visionModel: inference.visionModel,
+                fastModel: inference.fastModel
             }
         }));
     }
@@ -164,7 +167,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           endpoint: inferenceEndpoint,
           model: inferenceModel,
           agentModel: inferenceAgentModel,
-          visionModel: inferenceVisionModel
+          visionModel: inferenceVisionModel,
+          fastModel: inferenceFastModel
       };
       
       const updatedConfigs = {
@@ -184,6 +188,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           setInferenceModel(saved.model || '');
           setInferenceAgentModel(saved.agentModel || '');
           setInferenceVisionModel(saved.visionModel || '');
+          setInferenceFastModel(saved.fastModel || '');
       } else {
           // Defaults
           setInferenceApiKey('');
@@ -191,21 +196,25 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               setInferenceModel('gpt-4-turbo-preview');
               setInferenceAgentModel('gpt-4-turbo-preview');
               setInferenceVisionModel('gpt-4o-mini');
+              setInferenceFastModel('gpt-4o-mini');
               setInferenceEndpoint('');
           } else if (newProvider === 'gemini') {
               setInferenceModel('gemini-1.5-pro');
               setInferenceAgentModel('gemini-1.5-pro');
               setInferenceVisionModel('gemini-1.5-flash');
+              setInferenceFastModel('gemini-1.5-flash');
               setInferenceEndpoint('');
           } else if (newProvider === 'kimi2') {
               setInferenceModel('kimi-k2-thinking');
               setInferenceAgentModel('kimi-k2-thinking');
               setInferenceVisionModel('kimi-k2-thinking');
+              setInferenceFastModel('kimi-k2-thinking');
               setInferenceEndpoint('');
           } else {
               setInferenceModel('qwen/qwen3.5-9b');
               setInferenceAgentModel('qwen/qwen3.5-9b');
               setInferenceVisionModel('qwen/qwen3.5-9b');
+              setInferenceFastModel('qwen/qwen3.5-9b');
               setInferenceEndpoint('');
           }
       }
@@ -296,7 +305,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           endpoint: inferenceEndpoint,
           model: inferenceModel,
           agentModel: inferenceAgentModel,
-          visionModel: inferenceVisionModel
+          visionModel: inferenceVisionModel,
+          fastModel: inferenceFastModel
         };
         const finalConfigs = { ...storedConfigs, [inferenceProvider]: currentConfig };
 
@@ -307,6 +317,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             model: inferenceModel || undefined,
             agentModel: inferenceAgentModel || undefined,
             visionModel: inferenceVisionModel || undefined,
+            fastModel: inferenceFastModel || undefined,
             savedConfigs: finalConfigs
         };
 
@@ -636,14 +647,25 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                                       </div>
                                   </div>
                                   
-                                  <div className="space-y-2">
-                                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">Vision Model</label>
-                                      <input
-                                          type="text"
-                                          value={inferenceVisionModel}
-                                          onChange={(e) => setInferenceVisionModel(e.target.value)}
-                                          className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
-                                      />
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">Vision Model</label>
+                                          <input
+                                              type="text"
+                                              value={inferenceVisionModel}
+                                              onChange={(e) => setInferenceVisionModel(e.target.value)}
+                                              className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                                          />
+                                      </div>
+                                      <div className="space-y-2">
+                                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">Fast Expansion Model</label>
+                                          <input
+                                              type="text"
+                                              value={inferenceFastModel}
+                                              onChange={(e) => setInferenceFastModel(e.target.value)}
+                                              className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                                          />
+                                      </div>
                                   </div>
                               </div>
                           </div>

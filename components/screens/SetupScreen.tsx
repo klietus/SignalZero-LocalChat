@@ -69,7 +69,8 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
             endpoint: inferenceEndpoint,
             model: inferenceModel,
             agentModel: inferenceModel, // Default agent model to same
-            visionModel: inferenceProvider === 'openai' ? 'gpt-4o-mini' : (inferenceProvider === 'gemini' ? 'gemini-2.5-flash-lite' : (inferenceProvider === 'kimi2' ? 'kimi-k2-thinking' : 'zai-org/glm-4.6v-flash'))
+            visionModel: inferenceProvider === 'openai' ? 'gpt-4o-mini' : (inferenceProvider === 'gemini' ? 'gemini-2.5-flash-lite' : (inferenceProvider === 'kimi2' ? 'kimi-k2-thinking' : 'zai-org/glm-4.6v-flash')),
+            fastModel: inferenceProvider === 'openai' ? 'gpt-4o-mini' : (inferenceProvider === 'gemini' ? 'gemini-1.5-flash' : (inferenceProvider === 'kimi2' ? 'kimi-k2-thinking' : 'qwen/qwen3.5-9b'))
         };
 
         try {
