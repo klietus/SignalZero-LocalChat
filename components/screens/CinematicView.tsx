@@ -658,6 +658,103 @@ export const CinematicView: React.FC = () => {
         });
     };
 
+    const triggerCompressionAnimation = async (canonicalId: string, redundantId: string) => {
+        if (!graphRef.current) return;
+
+        const canonical = graphData.current.nodes.find(n => n.id === canonicalId);
+        const redundant = graphData.current.nodes.find(n => n.id === redundantId);
+
+        if (!canonical || !redundant) {
+            console.warn(`[Monitor] Compression failed: Symbols not found. C:${canonicalId} R:${redundantId}`);
+            return;
+        }
+
+        // 1. Cinematic Focus: Zoom out to see both
+        const center = {
+            x: ((canonical.x || 0) + (redundant.x || 0)) / 2,
+            y: ((canonical.y || 0) + (redundant.y || 0)) / 2,
+            z: ((canonical.z || 0) + (redundant.z || 0)) / 2
+        };
+        const distance = Math.hypot(
+            (canonical.x || 0) - (redundant.x || 0),
+            (canonical.y || 0) - (redundant.y || 0),
+            (canonical.z || 0) - (redundant.z || 0)
+        );
+
+        graphRef.current.cameraPosition(
+            { x: center.x, y: center.y, z: center.z + Math.max(200, distance * 2) },
+            center,
+            2000
+        );
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // 2. High-Intensity Flare: "Blinding Link"
+        const blindingLink = {
+            source: redundantId,
+            target: canonicalId,
+            color: '#ffff00',
+            width: 12
+        };
+        graphData.current.links.push(blindingLink);
+        graphRef.current.graphData(graphData.current);
+
+        // Highlight nodes
+        redundant.val = 15;
+        canonical.val = 15;
+        syncNodeObject(redundantId, true); // Force glow
+        syncNodeObject(canonicalId, true);
+        graphRef.current.graphData(graphData.current);
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 3. Merging Animation: Translate redundant towards canonical
+        const steps = 60;
+        const duration = 2000;
+        const startPos = { x: redundant.x || 0, y: redundant.y || 0, z: redundant.z || 0 };
+        const endPos = { x: canonical.x || 0, y: canonical.y || 0, z: canonical.z || 0 };
+
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            redundant.x = startPos.x + (endPos.x - startPos.x) * t;
+            redundant.y = startPos.y + (endPos.y - startPos.y) * t;
+            redundant.z = startPos.z + (endPos.z - startPos.z) * t;
+            
+            // Re-render only every few steps for performance
+            if (i % 2 === 0) graphRef.current.graphData(graphData.current);
+            await new Promise(resolve => setTimeout(resolve, duration / steps));
+        }
+
+        // 4. Supernova & Finalization
+        await triggerSupernova([canonicalId]);
+
+        // 5. Topology Cleanup: Move links and remove redundant
+        graphData.current.links.forEach(l => {
+            const src = typeof l.source === 'string' ? l.source : (l.source as any).id;
+            const tgt = typeof l.target === 'string' ? l.target : (l.target as any).id;
+            
+            if (src === redundantId) l.source = canonicalId;
+            if (tgt === redundantId) l.target = canonicalId;
+        });
+
+        // Deduplicate links
+        const linkMap = new Set();
+        graphData.current.links = graphData.current.links.filter(l => {
+            const src = typeof l.source === 'string' ? l.source : (l.source as any).id;
+            const tgt = typeof l.target === 'string' ? l.target : (l.target as any).id;
+            const key = [src, tgt].sort().join(':');
+            if (linkMap.has(key) || src === tgt) return false;
+            linkMap.add(key);
+            return true;
+        });
+
+        // Remove redundant node
+        graphData.current.nodes = graphData.current.nodes.filter(n => n.id !== redundantId);
+        
+        // Final recalculation
+        canonical.val = calculateNodeSize(canonicalId, canonical.isCached);
+        graphRef.current.graphData(graphData.current);
+    };
+
     const triggerSupernova = async (nodeIds: string[]) => {
         if (!graphRef.current) return;
         
@@ -733,8 +830,10 @@ export const CinematicView: React.FC = () => {
             case 'LINK_CREATE': logMsg = `Linked: ${data.sourceId} -> ${data.targetId}`; break;
             case 'TENTATIVE_LINK_CREATE': logMsg = `Tentative Link: ${data.sourceId} <-> ${data.targetId}`; break;
             case 'LINK_DELETE': logMsg = `Link Deleted: ${data.sourceId} -> ${data.targetId}`; break;
+            case 'SYMBOL_COMPRESSION': logMsg = `Compression: ${data.redundantId} -> ${data.canonicalId}`; break;
             case 'TRACE_GENERATE': logMsg = `Trace: ${data.trace.id}`; break;
-        }
+            }
+
 
         if (logMsg) {
             setTransientMessage({ text: logMsg, type });
@@ -963,6 +1062,11 @@ export const CinematicView: React.FC = () => {
                 if (tNode) tNode.val = calculateNodeSize(targetId, tNode.isCached);
 
                 graphRef.current.graphData(graphData.current);
+                break;
+            }
+            case 'SYMBOL_COMPRESSION': {
+                const { canonicalId, redundantId } = data;
+                await triggerCompressionAnimation(canonicalId, redundantId);
                 break;
             }
             case 'TRACE_GENERATE': {

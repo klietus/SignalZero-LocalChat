@@ -89,12 +89,30 @@ export interface VoiceSettings {
   wakeWord?: string;
 }
 
+export interface GraphHygieneSettings {
+  positional: {
+    autoCompress: boolean;
+    autoLink: boolean;
+  };
+  semantic: {
+    autoCompress: boolean;
+    autoLink: boolean;
+  };
+  triadic: {
+    autoCompress: boolean;
+    autoLink: boolean;
+  };
+  deadLinkCleanup: boolean;
+  orphanAnalysis: boolean;
+}
+
 export interface SystemSettings {
   redis?: RedisSettings;
   chroma?: ChromaSettings;
   inference?: InferenceSettings;
   serpApi?: SerpApiSettings;
   voice?: VoiceSettings;
+  hygiene?: GraphHygieneSettings;
   geminiKey?: string;
 }
 
@@ -104,6 +122,7 @@ export interface SystemSettingsUpdate {
   inference?: InferenceSettingsUpdate;
   serpApi?: SerpApiSettings;
   voice?: VoiceSettings;
+  hygiene?: Partial<GraphHygieneSettings>;
   geminiKey?: string;
 }
 

@@ -4,8 +4,9 @@ import {
     Search, Upload, CheckCircle2, AlertCircle, Mic, Users, Key, Trash2, Plus, RefreshCw
 } from 'lucide-react';
 import { userService, User } from '../../services/userService';
-import { UserProfile } from '../../types';
+import { UserProfile, GraphHygieneSettings } from '../../types';
 import { getApiUrl, setApiUrl } from '../../services/config';
+import { apiFetch } from '../../services/api';
 import { settingsService } from '../../services/settingsService';
 import { uploadServiceAccount, changePassword } from '../../services/api';
 import { Header, HeaderProps } from '../Header';
@@ -48,6 +49,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [inferenceAgentModel, setInferenceAgentModel] = useState('');
   const [inferenceVisionModel, setInferenceVisionModel] = useState('');
   const [inferenceFastModel, setInferenceFastModel] = useState('');
+
+  // Graph Hygiene State
+  const [hygieneSettings, setHygieneSettings] = useState<GraphHygieneSettings>({
+    positional: { autoCompress: false, autoLink: false },
+    semantic: { autoCompress: false, autoLink: false },
+    triadic: { autoCompress: false, autoLink: false },
+    deadLinkCleanup: false,
+    orphanAnalysis: false
+  });
+  const [isRunningHygiene, setIsRunningHygiene] = useState<string | null>(null);
 
   // Voice Server State
   const [pulseServer, setPulseServer] = useState('');
@@ -112,6 +123,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     const inference = settings.inference || {};
     const serpApi = settings.serpApi || {};
     const voice = settings.voice || {};
+    const hygiene = settings.hygiene || {
+        positional: { autoCompress: false, autoLink: false },
+        semantic: { autoCompress: false, autoLink: false },
+        triadic: { autoCompress: false, autoLink: false },
+        deadLinkCleanup: false,
+        orphanAnalysis: false
+    };
 
     setRedisHost(redis.server || redis.redisServer || '');
     setRedisPort(
@@ -141,6 +159,23 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     setInferenceVisionModel(inference.visionModel || '');
     setInferenceFastModel(inference.fastModel || '');
     
+    setHygieneSettings({
+        positional: {
+            autoCompress: hygiene.positional?.autoCompress === true,
+            autoLink: hygiene.positional?.autoLink === true
+        },
+        semantic: {
+            autoCompress: hygiene.semantic?.autoCompress === true,
+            autoLink: hygiene.semantic?.autoLink === true
+        },
+        triadic: {
+            autoCompress: hygiene.triadic?.autoCompress === true,
+            autoLink: hygiene.triadic?.autoLink === true
+        },
+        deadLinkCleanup: hygiene.deadLinkCleanup === true,
+        orphanAnalysis: hygiene.orphanAnalysis === true
+    });
+
     // Load saved configs
     if (inference.savedConfigs) {
         setStoredConfigs(inference.savedConfigs);
@@ -338,6 +373,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 pulseServer: pulseServer || undefined,
                 wakeWord: wakeWord || undefined
             },
+            hygiene: hygieneSettings,
             inference: inferencePayload
         });
 
@@ -431,10 +467,31 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     }
   }, [activeTab]);
 
+  const handleRunHygiene = async (strategy: string) => {
+    setIsRunningHygiene(strategy);
+    try {
+        const res = await apiFetch('/hygiene/run', {
+            method: 'POST',
+            body: JSON.stringify({ strategy })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            alert(`Hygiene run complete: ${JSON.stringify(data.stats)}`);
+        } else {
+            alert(`Hygiene run failed: ${data.error}`);
+        }
+    } catch (err: any) {
+        alert(`Error running hygiene: ${err.message}`);
+    } finally {
+        setIsRunningHygiene(null);
+    }
+  };
+
   const tabs = [
       { id: 'general', label: 'General', icon: Shield },
       { id: 'inference', label: 'Inference', icon: Cpu },
       { id: 'services', label: 'Services', icon: Cloud },
+      { id: 'hygiene', label: 'Graph Hygiene', icon: Database },
       { id: 'voice', label: 'Voice Server', icon: Mic },
       { id: 'data', label: 'Data Stores', icon: Database, adminOnly: true },
       { id: 'security', label: 'Security', icon: Lock },
@@ -736,6 +793,125 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                                               </div>
                                           )}
                                       </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </section>
+                  )}
+
+                  {activeTab === 'hygiene' && (
+                      <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                          <div>
+                              <h2 className="text-lg font-bold mb-1">Graph Hygiene</h2>
+                              <p className="text-sm text-gray-500">Maintain the integrity and coherence of the symbolic graph.</p>
+                          </div>
+
+                          <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-8">
+                              {/* Analysis Strategies */}
+                              <div className="space-y-6">
+                                  {[
+                                      { id: 'positional', label: 'Positional Similarity (Tensor)', desc: 'Identifies redundancy based on structural role in the graph topology.' },
+                                      { id: 'semantic', label: 'Semantic Similarity (Vector)', desc: 'Uses embeddings to find symbols representing similar concepts.' },
+                                      { id: 'triadic', label: 'Triadic Similarity (Emoji)', desc: 'Matches symbols based on emoji triads and resonant patterns.' }
+                                  ].map(strat => (
+                                      <div key={strat.id} className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-800 space-y-4">
+                                          <div className="flex items-center justify-between">
+                                              <div>
+                                                  <div className="font-bold text-sm text-gray-900 dark:text-gray-100">{strat.label}</div>
+                                                  <div className="text-xs text-gray-500">{strat.desc}</div>
+                                              </div>
+                                              <button
+                                                  onClick={() => handleRunHygiene(strat.id)}
+                                                  disabled={isRunningHygiene !== null}
+                                                  className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-md text-xs font-bold transition-colors"
+                                              >
+                                                  {isRunningHygiene === strat.id ? <RefreshCw size={12} className="animate-spin" /> : <Plus size={12} />}
+                                                  Run Now
+                                              </button>
+                                          </div>
+                                          
+                                          <div className="flex gap-6 pt-2 border-t border-gray-100 dark:border-gray-800">
+                                              <label className="flex items-center gap-2 cursor-pointer group">
+                                                  <input
+                                                      type="checkbox"
+                                                      checked={(hygieneSettings as any)[strat.id].autoCompress}
+                                                      onChange={(e) => setHygieneSettings({
+                                                          ...hygieneSettings,
+                                                          [strat.id]: { ...(hygieneSettings as any)[strat.id], autoCompress: e.target.checked }
+                                                      })}
+                                                      className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                                  />
+                                                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-200 transition-colors">Auto-Compression</span>
+                                              </label>
+                                              <label className="flex items-center gap-2 cursor-pointer group">
+                                                  <input
+                                                      type="checkbox"
+                                                      checked={(hygieneSettings as any)[strat.id].autoLink}
+                                                      onChange={(e) => setHygieneSettings({
+                                                          ...hygieneSettings,
+                                                          [strat.id]: { ...(hygieneSettings as any)[strat.id], autoLink: e.target.checked }
+                                                      })}
+                                                      className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                                  />
+                                                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-200 transition-colors">Auto-Linking</span>
+                                              </label>
+                                          </div>
+                                      </div>
+                                  ))}
+                              </div>
+
+                              {/* Cleanup Tasks */}
+                              <div className="pt-6 border-t border-gray-100 dark:border-gray-800 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-800 space-y-4">
+                                      <div className="flex items-center justify-between">
+                                          <div className="space-y-1">
+                                              <div className="font-bold text-xs uppercase tracking-wider text-gray-500">Dead Link Cleanup</div>
+                                              <div className="text-[10px] text-gray-400">Removes links pointing to non-existent symbols.</div>
+                                          </div>
+                                          <label className="relative inline-flex items-center cursor-pointer">
+                                              <input 
+                                                  type="checkbox" 
+                                                  checked={hygieneSettings.deadLinkCleanup}
+                                                  onChange={(e) => setHygieneSettings({...hygieneSettings, deadLinkCleanup: e.target.checked})}
+                                                  className="sr-only peer" 
+                                              />
+                                              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"></div>
+                                          </label>
+                                      </div>
+                                      <button
+                                          onClick={() => handleRunHygiene('deadLinkCleanup')}
+                                          disabled={isRunningHygiene !== null}
+                                          className="w-full flex items-center justify-center gap-2 px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:bg-gray-400 text-gray-700 dark:text-gray-200 rounded-md text-[10px] font-bold transition-colors"
+                                      >
+                                          {isRunningHygiene === 'deadLinkCleanup' ? <RefreshCw size={10} className="animate-spin" /> : <RefreshCw size={10} />}
+                                          Run Cleanup Now
+                                      </button>
+                                  </div>
+
+                                  <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-800 space-y-4">
+                                      <div className="flex items-center justify-between">
+                                          <div className="space-y-1">
+                                              <div className="font-bold text-xs uppercase tracking-wider text-gray-500">Orphan Analysis</div>
+                                              <div className="text-[10px] text-gray-400">Identifies symbols with no incoming or outgoing links.</div>
+                                          </div>
+                                          <label className="relative inline-flex items-center cursor-pointer">
+                                              <input 
+                                                  type="checkbox" 
+                                                  checked={hygieneSettings.orphanAnalysis}
+                                                  onChange={(e) => setHygieneSettings({...hygieneSettings, orphanAnalysis: e.target.checked})}
+                                                  className="sr-only peer" 
+                                              />
+                                              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"></div>
+                                          </label>
+                                      </div>
+                                      <button
+                                          onClick={() => handleRunHygiene('orphanAnalysis')}
+                                          disabled={isRunningHygiene !== null}
+                                          className="w-full flex items-center justify-center gap-2 px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:bg-gray-400 text-gray-700 dark:text-gray-200 rounded-md text-[10px] font-bold transition-colors"
+                                      >
+                                          {isRunningHygiene === 'orphanAnalysis' ? <RefreshCw size={10} className="animate-spin" /> : <Search size={10} />}
+                                          Run Analysis Now
+                                      </button>
                                   </div>
                               </div>
                           </div>
