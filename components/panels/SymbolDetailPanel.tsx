@@ -238,11 +238,11 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                         </p>
                     </div>
 
-                    {data.activation_conditions && data.activation_conditions.length > 0 && (
+                    {(data.activation_conditions || []).length > 0 && (
                         <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-800 space-y-2">
                             <div className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Activation Conditions</div>
                             <ul className="list-disc pl-4 space-y-1 text-xs text-gray-700 dark:text-gray-300">
-                                {data.activation_conditions.map((cond, i) => (
+                                {(data.activation_conditions || []).map((cond, i) => (
                                     <li key={i}>{safeRenderItem(cond)}</li>
                                 ))}
                             </ul>
@@ -267,11 +267,11 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                                 </div>
                             </div>
                             
-                            {data.linked_patterns && data.linked_patterns.length > 0 && (
+                            {(data.linked_patterns || []).length > 0 && (
                                 <div>
                                     <span className="text-[10px] text-gray-500 uppercase font-mono mb-2 block">Lattice Members</span>
                                     <ul className="space-y-2">
-                                        {data.linked_patterns.map((link: any, i: number) => renderLinkItem(link, i, "bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300", <Layout size={10} />))}
+                                        {(data.linked_patterns || []).map((link: any, i: number) => renderLinkItem(link, i, "bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300", <Layout size={10} />))}
                                     </ul>
                                 </div>
                             )}
@@ -296,22 +296,22 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                                 </div>
                             </div>
 
-                            {data.persona.fallback_behavior && (
+                            {(data.persona.fallback_behavior || []).length > 0 && (
                                 <div className="space-y-1">
                                     <span className="text-[10px] text-gray-500 uppercase font-mono">Fallback Behavior</span>
                                     <ul className="text-xs text-gray-700 dark:text-gray-300 list-disc pl-4 space-y-1">
-                                        {data.persona.fallback_behavior.map((beh, i) => (
+                                        {(data.persona.fallback_behavior || []).map((beh, i) => (
                                             <li key={i}>{safeRenderItem(beh)}</li>
                                         ))}
                                     </ul>
                                 </div>
                             )}
                             
-                             {data.persona.linked_personas && data.persona.linked_personas.length > 0 && (
+                             {(data.persona.linked_personas || []).length > 0 && (
                                 <div>
                                     <span className="text-[10px] text-gray-500 uppercase font-mono mb-2 block">Linked Personas</span>
                                     <div className="flex flex-wrap gap-2">
-                                        {data.persona.linked_personas.map((link, i) => {
+                                        {(data.persona.linked_personas || []).map((link, i) => {
                                             const linkId = safeRenderItem(link);
                                             return (
                                                 <button 
@@ -391,11 +391,11 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                             </div>
 
                             {/* Arrays */}
-                            {data.facets.invariants && data.facets.invariants.length > 0 && (
+                            {(data.facets.invariants || []).length > 0 && (
                                 <div className="space-y-1">
                                     <div className="text-xs font-mono text-gray-500">Invariants</div>
                                     <div className="flex flex-wrap gap-2">
-                                        {data.facets.invariants.map((inv, i) => (
+                                        {(data.facets.invariants || []).map((inv, i) => (
                                             <span key={i} className="px-2 py-1 rounded bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-500 text-xs flex items-center gap-1 border border-amber-200 dark:border-amber-900/30">
                                                 <Shield size={10} /> {safeRenderItem(inv)}
                                             </span>
@@ -404,11 +404,11 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                                 </div>
                             )}
 
-                            {data.facets.substrate && data.facets.substrate.length > 0 && (
+                            {(data.facets.substrate || []).length > 0 && (
                                 <div className="space-y-1">
                                     <div className="text-xs font-mono text-gray-500">Substrate</div>
                                     <div className="flex flex-wrap gap-2">
-                                        {data.facets.substrate.map((sub, i) => (
+                                        {(data.facets.substrate || []).map((sub, i) => (
                                             <span key={i} className="px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-500 text-xs flex items-center gap-1 border border-blue-200 dark:border-blue-900/30">
                                                 <Box size={10} /> {safeRenderItem(sub)}
                                             </span>
@@ -417,11 +417,11 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
                                 </div>
                             )}
 
-                            {data.facets.gate && data.facets.gate.length > 0 && (
+                            {(data.facets.gate || []).length > 0 && (
                                 <div className="space-y-1">
                                     <div className="text-xs font-mono text-gray-500">Gates</div>
                                     <div className="flex flex-wrap gap-2">
-                                        {data.facets.gate.map((gate, i) => (
+                                        {(data.facets.gate || []).map((gate, i) => (
                                             <span key={i} className="px-2 py-1 rounded bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-500 text-xs flex items-center gap-1 border border-rose-200 dark:border-rose-900/30">
                                                 <Activity size={10} /> {safeRenderItem(gate)}
                                             </span>
@@ -446,14 +446,14 @@ export const SymbolDetailPanel: React.FC<SymbolDetailPanelProps> = ({
 
                     {/* Linked Patterns (Common / Pattern only) */}
                     {/* Note: Lattice uses 'members', Persona uses 'linked_personas'. This handles legacy or pattern-specific links */}
-                    {data.linked_patterns && data.linked_patterns.length > 0 && (
+                    {(data.linked_patterns || []).length > 0 && (
                         <div>
                              <div className="text-[10px] uppercase tracking-widest text-gray-500 font-mono border-b border-gray-200 dark:border-gray-800 pb-1 mb-3 flex items-center justify-between">
                                 <span><GitBranch size={10} className="inline mr-1" /> Linked Patterns</span>
-                                <span className="text-xs normal-case font-sans font-normal">{data.linked_patterns.length} links</span>
+                                <span className="text-xs normal-case font-sans font-normal">{(data.linked_patterns || []).length} links</span>
                             </div>
                             <ul className="space-y-2">
-                                {data.linked_patterns.map((link, i) => renderLinkItem(link, i, "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300", <GitBranch size={10} />))}
+                                {(data.linked_patterns || []).map((link, i) => renderLinkItem(link, i, "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300", <GitBranch size={10} />))}
                             </ul>
                         </div>
                     )}

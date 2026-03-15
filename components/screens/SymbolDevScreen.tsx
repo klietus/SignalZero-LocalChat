@@ -317,7 +317,7 @@ const SymbolRelationshipField = ({
                 </div>
             ) : (
                 <div className="space-y-2">
-                    {safeItems.map((item, idx) => {
+                    {(safeItems || []).map((item, idx) => {
                         const display = typeof item === 'object' ? (item.id || "Invalid Obj") : item;
                         const linkType = typeof item === 'object' ? item.link_type : 'relates_to';
                         const bidirectional = typeof item === 'object' ? !!item.bidirectional : false;
@@ -936,7 +936,7 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                 onChange={(e) => setSelectedDomain(e.target.value)}
                                 className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded p-2 text-sm font-mono appearance-none"
                             >
-                                {domains.map(d => <option key={d} value={d}>{d}</option>)}
+                                {(domains || []).map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
                             <ChevronRight className="absolute right-2 top-3 text-gray-400 rotate-90" size={14} />
                         </div>
@@ -954,12 +954,12 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                     <Plus size={12} />
                                 </button>
                             </div>
-                            {patterns.length === 0 ? (
+                            {(patterns || []).length === 0 ? (
                                 <div className="p-2 text-center text-xs text-gray-400 font-mono italic">
                                     No patterns.
                                 </div>
                             ) : (
-                                patterns.map(sym => (
+                                (patterns || []).map(sym => (
                                     <div key={sym.id} className="group relative flex items-center mb-0.5">
                                         <button
                                             draggable
@@ -1004,12 +1004,12 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                     <Plus size={12} />
                                 </button>
                             </div>
-                            {lattices.length === 0 ? (
+                            {(lattices || []).length === 0 ? (
                                 <div className="p-2 text-center text-xs text-gray-400 font-mono italic">
                                     No lattices.
                                 </div>
                             ) : (
-                                lattices.map(sym => (
+                                (lattices || []).map(sym => (
                                     <div key={sym.id} className="group relative flex items-center mb-0.5">
                                         <button
                                             draggable
@@ -1054,12 +1054,12 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                     <Plus size={12} />
                                 </button>
                             </div>
-                            {personas.length === 0 ? (
+                            {(personas || []).length === 0 ? (
                                 <div className="p-2 text-center text-xs text-gray-400 font-mono italic">
                                     No personas.
                                 </div>
                             ) : (
-                                personas.map(sym => (
+                                (personas || []).map(sym => (
                                     <div key={sym.id} className="group relative flex items-center mb-0.5">
                                         <button
                                             draggable
@@ -1104,12 +1104,12 @@ export const SymbolDevScreen: React.FC<SymbolDevScreenProps> = ({ onBack, initia
                                     <Plus size={12} />
                                 </button>
                             </div>
-                            {datas.length === 0 ? (
+                            {(datas || []).length === 0 ? (
                                 <div className="p-2 text-center text-xs text-gray-400 font-mono italic">
                                     No data.
                                 </div>
                             ) : (
-                                datas.map(sym => (
+                                (datas || []).map(sym => (
                                     <div key={sym.id} className="group relative flex items-center mb-0.5">
                                         <button
                                             draggable

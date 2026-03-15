@@ -967,8 +967,8 @@ export const CinematicView: React.FC = () => {
             }
             case 'TRACE_GENERATE': {
                 const { trace } = data;
-                if (trace.activation_path) {
-                    const steps = trace.activation_path.filter((step: any) => step.symbol_id);
+                if (trace && trace.activation_path && Array.isArray(trace.activation_path)) {
+                    const steps = trace.activation_path.filter((step: any) => step && step.symbol_id);
                     
                     // 1. Ensure all nodes exist (no temporary highlighting to avoid twitches)
                     for (const step of steps) {

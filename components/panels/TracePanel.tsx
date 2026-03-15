@@ -121,13 +121,13 @@ export const TracePanel: React.FC<TracePanelProps> = ({
             
             {/* Sidebar List */}
             <div className="w-1/3 border-r border-gray-200 dark:border-gray-800 overflow-y-auto bg-gray-100/50 dark:bg-gray-900/30">
-                {traces.length === 0 ? (
+                {!traces || traces.length === 0 ? (
                     <div className="p-4 text-xs text-gray-400 font-mono text-center mt-10">
                         No traces captured.
                     </div>
                 ) : (
                     <div className="flex flex-col">
-                        {traces.slice().reverse().map((trace) => (
+                        {(traces || []).slice().reverse().map((trace) => (
                             <button
                                 key={trace.id}
                                 onClick={() => {
@@ -135,20 +135,20 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                                     setActiveTrace(trace);
                                 }}
                                 className={`p-3 text-left border-b border-gray-200 dark:border-gray-800 transition-colors hover:bg-white dark:hover:bg-gray-800 ${
-                                    activeTrace?.id === trace.id 
+                                    activeTrace?.id === trace?.id 
                                     ? 'bg-white dark:bg-gray-800 border-l-4 border-l-amber-500' 
                                     : 'border-l-4 border-l-transparent'
                                 }`}
                             >
                                 <div className="font-mono text-[10px] text-gray-500 mb-1 truncate">
-                                    {trace.id}
+                                    {trace?.id || 'N/A'}
                                 </div>
                                 <div className="font-bold text-xs text-gray-800 dark:text-gray-200 truncate">
-                                    {trace.entry_node}
+                                    {trace?.entry_node || 'N/A'}
                                 </div>
                                 <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-400">
                                     <Activity size={10} />
-                                    <span className="truncate">{trace.status}</span>
+                                    <span className="truncate">{trace?.status || 'UNKNOWN'}</span>
                                 </div>
                             </button>
                         ))}

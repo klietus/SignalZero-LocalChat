@@ -104,13 +104,29 @@ export const SymbolStoreScreen: React.FC<SymbolStoreScreenProps> = ({ onBack, on
               const text = event.target?.result as string;
               const json = JSON.parse(text);
               let domainId = '', domainName = '', symbols: SymbolDef[] = [], description = '', invariants: string[] = [];
+              
               if (json.items && Array.isArray(json.items)) {
                   symbols = json.items;
                   domainId = json.domain || 'imported';
                   domainName = json.name || domainId;
                   description = json.description || '';
                   invariants = json.invariants || [];
+              } else if (json.symbols && Array.isArray(json.symbols)) {
+                  symbols = json.symbols;
+                  if (json.meta) {
+                      domainId = json.meta.id || 'imported';
+                      domainName = json.meta.name || domainId;
+                      description = json.meta.description || '';
+                      invariants = json.meta.invariants || [];
+                  } else {
+                      domainId = json.id || json.domain || 'imported';
+                      domainName = json.name || domainId;
+                  }
               }
+
+              if (!domainId) domainId = 'imported';
+              if (!domainName) domainName = domainId;
+
               setImportCandidate({ domainId, domainName, description, invariants, symbols });
           } catch (err) { alert("Failed to parse file."); }
           finally { if (fileInputRef.current) fileInputRef.current.value = ''; }

@@ -500,10 +500,10 @@ export const AgentsScreen: React.FC<AgentsScreenProps> = ({ headerProps }) => {
                                         <div className="mt-3 bg-white/60 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-lg p-3">
                                             <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-2">Captured Traces</p>
                                             <div className="space-y-2 max-h-40 overflow-y-auto">
-                                                {log.traces.map((trace) => (
-                                                    <div key={trace.id} className="text-xs text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 rounded-md p-2 border border-gray-100 dark:border-gray-700">
-                                                        <div className="font-mono text-gray-500">Trace #{trace.id}</div>
-                                                        <div className="text-gray-900 dark:text-gray-100">{trace.output_node}</div>
+                                                {(log.traces || []).map((trace) => (
+                                                    <div key={trace?.id || Math.random()} className="text-xs text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 rounded-md p-2 border border-gray-100 dark:border-gray-700">
+                                                        <div className="font-mono text-gray-500">Trace #{trace?.id || 'N/A'}</div>
+                                                        <div className="text-gray-900 dark:text-gray-100">{trace?.output_node || 'UNKNOWN'}</div>
                                                     </div>
                                                 ))}
                                             </div>

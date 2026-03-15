@@ -79,7 +79,7 @@ const DomainTag: React.FC<DomainTagProps> = ({ id, name, onClick }) => {
 const TraceAggregator: React.FC<{ traces: TraceData[], onTraceClick?: (id: string) => void, defaultExpanded?: boolean }> = ({ traces, onTraceClick, defaultExpanded = false }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  if (traces.length === 0) return null;
+  if (!traces || traces.length === 0) return null;
 
   return (
     <div className="mb-4 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/10 overflow-hidden">
@@ -96,23 +96,23 @@ const TraceAggregator: React.FC<{ traces: TraceData[], onTraceClick?: (id: strin
 
       {isExpanded && (
         <div className="border-t border-amber-200 dark:border-amber-900/50 divide-y divide-amber-200/50 dark:divide-amber-900/30">
-          {traces.map((trace, idx) => (
+          {(traces || []).map((trace, idx) => (
             <button
               key={idx}
-              onClick={() => onTraceClick && onTraceClick(trace.id)}
+              onClick={() => trace?.id && onTraceClick && onTraceClick(trace.id)}
               className="w-full text-left px-4 py-3 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors group"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="font-mono text-[10px] text-amber-600/70 dark:text-amber-500/70">{trace.id}</span>
+                <span className="font-mono text-[10px] text-amber-600/70 dark:text-amber-500/70">{trace?.id || 'N/A'}</span>
                 <span className="flex items-center gap-1 text-[10px] uppercase text-amber-600 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded">
-                  <Activity size={10} /> {trace.status}
+                  <Activity size={10} /> {trace?.status || 'UNKNOWN'}
                 </span>
               </div>
               <div className="text-xs text-gray-700 dark:text-gray-300 font-mono line-clamp-1">
-                <span className="text-gray-400">Entry:</span> {trace.entry_node}
+                <span className="text-gray-400">Entry:</span> {trace?.entry_node || 'N/A'}
               </div>
               <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 truncate">
-                 via {trace.activated_by}
+                 via {trace?.activated_by || 'Unknown'}
               </div>
             </button>
           ))}

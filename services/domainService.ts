@@ -4,6 +4,7 @@ import { apiFetch } from './api';
 export const domainService = {
   
   async createDomain(domainId: string, metadata: { name?: string, description?: string, invariants?: string[] } = {}): Promise<void> {
+    if (!domainId) throw new Error("Missing domainId");
     await apiFetch('/domains', {
         method: 'POST',
         body: JSON.stringify({ id: domainId, ...metadata })
@@ -18,6 +19,7 @@ export const domainService = {
   },
 
   async hasDomain(domainId: string): Promise<boolean> {
+    if (!domainId) throw new Error("Missing domainId");
     const res = await apiFetch(`/domains/${domainId}/exists`);
     if (!res.ok) return false;
     const data = await res.json();
@@ -25,6 +27,7 @@ export const domainService = {
   },
 
   async isEnabled(domainId: string): Promise<boolean> {
+    if (!domainId) throw new Error("Missing domainId");
     const res = await apiFetch(`/domains/${domainId}/enabled`);
     if (!res.ok) return false;
     const data = await res.json();
@@ -32,6 +35,7 @@ export const domainService = {
   },
 
   async toggleDomain(domainId: string, enabled: boolean): Promise<void> {
+    if (!domainId) throw new Error("Missing domainId");
     await apiFetch(`/domains/${domainId}/toggle`, {
         method: 'POST',
         body: JSON.stringify({ enabled })
@@ -39,6 +43,7 @@ export const domainService = {
   },
 
   async updateDomainMetadata(domainId: string, metadata: { name?: string, description?: string, invariants?: string[] }): Promise<void> {
+    if (!domainId) throw new Error("Missing domainId");
     await apiFetch(`/domains/${domainId}`, {
         method: 'PATCH',
         body: JSON.stringify(metadata)
@@ -46,6 +51,7 @@ export const domainService = {
   },
 
   async deleteDomain(domainId: string): Promise<void> {
+    if (!domainId) throw new Error("Missing domainId");
     await apiFetch(`/domains/${domainId}`, {
         method: 'DELETE'
     });
@@ -58,12 +64,14 @@ export const domainService = {
   },
 
   async deleteSymbol(domainId: string, symbolId: string, cascade: boolean = true): Promise<void> {
+    if (!domainId) throw new Error("Missing domainId");
     await apiFetch(`/domains/${domainId}/symbols/${symbolId}?cascade=${cascade}`, {
         method: 'DELETE'
     });
   },
 
   async propagateRename(domainId: string, oldId: string, newId: string): Promise<void> {
+    if (!domainId) throw new Error("Missing domainId");
      await apiFetch(`/domains/${domainId}/symbols/rename`, {
         method: 'POST',
         body: JSON.stringify({ oldId, newId })
@@ -71,12 +79,14 @@ export const domainService = {
   },
 
   async getSymbols(domainId: string): Promise<SymbolDef[]> {
+    if (!domainId) throw new Error("Missing domainId");
     const res = await apiFetch(`/domains/${domainId}/symbols`);
     if (!res.ok) return [];
     return await res.json();
   },
 
   async upsertSymbol(domainId: string, symbol: SymbolDef): Promise<void> {
+    if (!domainId) throw new Error("Missing domainId");
     // Ensure domain ID is set on symbol
     symbol.symbol_domain = domainId;
     await apiFetch(`/domains/${domainId}/symbols`, {
@@ -86,6 +96,7 @@ export const domainService = {
   },
 
   async bulkUpsert(domainId: string, symbols: SymbolDef[]): Promise<void> {
+    if (!domainId) throw new Error("Missing domainId");
     const cleaned = symbols.map(s => ({...s, symbol_domain: domainId}));
     await apiFetch(`/domains/${domainId}/symbols/bulk`, {
         method: 'POST',
