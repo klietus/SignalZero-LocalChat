@@ -41,6 +41,7 @@ export const CinematicView: React.FC = () => {
     const [showTraceDialog, setShowTraceDialog] = useState(false);
     const [traceInput, setTraceInput] = useState("");
     const [transientMessage, setTransientMessage] = useState<{ text: string, type?: string } | null>(null);
+    const [webSearchEvents, setWebSearchEvents] = useState<{ id: string, query: string, topResult?: any, timestamp: number }[]>([]);
     const eventQueue = useRef<any[]>([]);
     const lastEventTime = useRef<number>(Date.now());
     const graphData = useRef<{ nodes: GraphNode[], links: GraphLink[] }>({ nodes: [], links: [] });
@@ -234,7 +235,7 @@ export const CinematicView: React.FC = () => {
                                 const node = graphData.current.nodes.find(n => n.id === sourceId);
                                 return node ? node.color : '#444444';
                             })
-                            .backgroundColor('#020202')
+                            .backgroundColor('rgba(0,0,0,0)')
                             .showNavInfo(false)
                             .onNodeDrag(() => { lastEventTime.current = Date.now(); })
                             .onBackgroundClick(() => { lastEventTime.current = Date.now(); });
@@ -832,6 +833,7 @@ export const CinematicView: React.FC = () => {
             case 'LINK_DELETE': logMsg = `Link Deleted: ${data.sourceId} -> ${data.targetId}`; break;
             case 'SYMBOL_COMPRESSION': logMsg = `Compression: ${data.redundantId} -> ${data.canonicalId}`; break;
             case 'TRACE_GENERATE': logMsg = `Trace: ${data.trace.id}`; break;
+            case 'WEB_SEARCH': logMsg = `Web Search: ${data.query}`; break;
             }
 
 
@@ -1091,6 +1093,21 @@ export const CinematicView: React.FC = () => {
                 }
                 break;
             }
+            case 'WEB_SEARCH': {
+                const newEvent = {
+                    id: Math.random().toString(36).substring(7),
+                    query: data.query,
+                    topResult: data.topResult,
+                    timestamp: Date.now()
+                };
+                setWebSearchEvents(prev => [newEvent, ...prev].slice(0, 20));
+                
+                // Optional: Auto-remove after long duration if we want "temporary" background
+                setTimeout(() => {
+                    setWebSearchEvents(prev => prev.filter(e => e.id !== newEvent.id));
+                }, 60000); 
+                break;
+            }
         }
     };
 
@@ -1123,7 +1140,41 @@ export const CinematicView: React.FC = () => {
 
             {/* Graph Area */}
             <div className="flex-1 w-full relative">
-                <div ref={containerRef} className="absolute inset-0" />
+                {/* Background Web Search Results */}
+                <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-[0.07] select-none">
+                    <div className="flex flex-col gap-12 p-12 animate-scroll-vertical">
+                        {webSearchEvents.map((event) => (
+                            <div key={event.id} className="max-w-4xl">
+                                <div className="text-4xl font-bold uppercase tracking-tighter mb-4 text-emerald-500">
+                                    {event.query}
+                                </div>
+                                {event.topResult && (
+                                    <div className="space-y-2">
+                                        <div className="text-2xl font-semibold text-white">
+                                            {event.topResult.title}
+                                        </div>
+                                        <div className="text-xl leading-relaxed text-gray-300">
+                                            {event.topResult.snippet}
+                                        </div>
+                                        <div className="text-sm font-mono text-emerald-800 break-all">
+                                            {event.topResult.link}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {/* Duplicate for seamless scroll if few events */}
+                        {webSearchEvents.length > 0 && webSearchEvents.length < 5 && webSearchEvents.map((event) => (
+                             <div key={`${event.id}-dup`} className="max-w-4xl">
+                                <div className="text-4xl font-bold uppercase tracking-tighter mb-4 text-emerald-500">
+                                    {event.query}
+                                </div>
+                             </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div ref={containerRef} className="absolute inset-0 z-10" />
 
                 {isLoading && !webglError && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10 pointer-events-none">
@@ -1211,6 +1262,13 @@ export const CinematicView: React.FC = () => {
             </div>
 
             <style>{`
+                @keyframes scroll-vertical {
+                    0% { transform: translateY(0); }
+                    100% { transform: translateY(-50%); }
+                }
+                .animate-scroll-vertical {
+                    animation: scroll-vertical 120s linear infinite;
+                }
                 .symbol-tooltip {
                     background: rgba(0, 0, 0, 0.85);
                     backdrop-filter: blur(8px);
