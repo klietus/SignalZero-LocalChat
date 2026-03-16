@@ -472,7 +472,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     try {
         const res = await apiFetch('/hygiene/run', {
             method: 'POST',
-            body: JSON.stringify({ strategy })
+            body: JSON.stringify({ 
+                strategy,
+                settings: hygieneSettings 
+            })
         });
         const data = await res.json();
         if (data.status === 'success') {
