@@ -4,7 +4,7 @@ import {
     Search, Upload, CheckCircle2, AlertCircle, Mic, Users, Key, Trash2, Plus, RefreshCw
 } from 'lucide-react';
 import { userService, User } from '../../services/userService';
-import { UserProfile, GraphHygieneSettings } from '../../types';
+import { UserProfile, GraphHygieneSettings, McpConfiguration } from '../../types';
 import { getApiUrl, setApiUrl } from '../../services/config';
 import { apiFetch } from '../../services/api';
 import { settingsService } from '../../services/settingsService';
@@ -82,6 +82,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [currentUserApiKey, setCurrentUserApiKey] = useState<string | null>(null);
 
+  // MCP State
+  const [mcpConfigs, setMcpConfigs] = useState<McpConfiguration[]>([]);
+  const [showCreateMcp, setShowCreateMcp] = useState(false);
+  const [newMcpName, setNewMcpName] = useState('');
+  const [newMcpEndpoint, setNewMcpEndpoint] = useState('');
+  const [newMcpToken, setNewMcpToken] = useState('');
+
   // Local storage for provider configs during session
   const [storedConfigs, setStoredConfigs] = useState<Record<string, any>>({});
   
@@ -149,6 +156,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
     setPulseServer(voice.pulseServer || '');
     setWakeWord(voice.wakeWord || 'axiom');
+
+    setMcpConfigs(settings.mcpConfigs || []);
 
     const provider = inference.provider || 'local';
     setInferenceProvider(provider);
@@ -374,7 +383,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 wakeWord: wakeWord || undefined
             },
             hygiene: hygieneSettings,
-            inference: inferencePayload
+            inference: inferencePayload,
+            mcpConfigs: mcpConfigs
         });
 
         hydrateSettings(updated);
@@ -461,6 +471,30 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     }
   };
 
+  const handleCreateMcp = () => {
+    if (!newMcpName || !newMcpEndpoint) return;
+    const newConfig: McpConfiguration = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: newMcpName,
+        endpoint: newMcpEndpoint,
+        token: newMcpToken,
+        enabled: true
+    };
+    setMcpConfigs([...mcpConfigs, newConfig]);
+    setNewMcpName('');
+    setNewMcpEndpoint('');
+    setNewMcpToken('');
+    setShowCreateMcp(false);
+  };
+
+  const handleDeleteMcp = (id: string) => {
+    setMcpConfigs(mcpConfigs.filter(c => c.id !== id));
+  };
+
+  const handleToggleMcp = (id: string) => {
+    setMcpConfigs(mcpConfigs.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c));
+  };
+
   useEffect(() => {
     if (activeTab === 'users') {
       loadUsers();
@@ -494,6 +528,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       { id: 'general', label: 'General', icon: Shield },
       { id: 'inference', label: 'Inference', icon: Cpu },
       { id: 'services', label: 'Services', icon: Cloud },
+      { id: 'mcp', label: 'MCP Clients', icon: Network },
       { id: 'hygiene', label: 'Graph Hygiene', icon: Database },
       { id: 'voice', label: 'Voice Server', icon: Mic },
       { id: 'data', label: 'Data Stores', icon: Database, adminOnly: true },
@@ -728,6 +763,116 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                                       </div>
                                   </div>
                               </div>
+                          </div>
+                      </section>
+                  )}
+
+                  {activeTab === 'mcp' && (
+                      <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                          <div className="flex items-center justify-between">
+                              <div>
+                                  <h2 className="text-lg font-bold mb-1">MCP Clients</h2>
+                                  <p className="text-sm text-gray-500">Manage Model Context Protocol client integrations.</p>
+                              </div>
+                              <button
+                                  onClick={() => setShowCreateMcp(true)}
+                                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors"
+                              >
+                                  <Plus size={16} />
+                                  Add MCP Config
+                              </button>
+                          </div>
+
+                          {showCreateMcp && (
+                              <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
+                                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 font-mono">New MCP Configuration</h3>
+                                  <div className="space-y-4">
+                                      <div className="space-y-2">
+                                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">Display Name</label>
+                                          <input
+                                              type="text"
+                                              value={newMcpName}
+                                              onChange={(e) => setNewMcpName(e.target.value)}
+                                              placeholder="e.g. Gemini Skills"
+                                              className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                                          />
+                                      </div>
+                                      <div className="space-y-2">
+                                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">SSE Endpoint</label>
+                                          <input
+                                              type="text"
+                                              value={newMcpEndpoint}
+                                              onChange={(e) => setNewMcpEndpoint(e.target.value)}
+                                              placeholder="http://host:port/mcp/sse"
+                                              className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                                          />
+                                      </div>
+                                      <div className="space-y-2">
+                                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">Auth Token / API Key (Optional)</label>
+                                          <input
+                                              type="password"
+                                              value={newMcpToken}
+                                              onChange={(e) => setNewMcpToken(e.target.value)}
+                                              placeholder="Secret token for the MCP server"
+                                              className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                                          />
+                                      </div>
+                                  </div>
+                                  <div className="flex gap-2 pt-2">
+                                      <button
+                                          onClick={handleCreateMcp}
+                                          disabled={!newMcpName || !newMcpEndpoint}
+                                          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-medium transition-colors"
+                                      >
+                                          Save Configuration
+                                      </button>
+                                      <button
+                                          onClick={() => setShowCreateMcp(false)}
+                                          className="px-4 py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300"
+                                      >
+                                          Cancel
+                                      </button>
+                                  </div>
+                              </div>
+                          )}
+
+                          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                              {mcpConfigs.length === 0 ? (
+                                  <div className="p-8 text-center text-gray-500 italic">No MCP clients configured.</div>
+                              ) : (
+                                  <div className="divide-y divide-gray-200 dark:divide-gray-800">
+                                      {mcpConfigs.map((config) => (
+                                          <div key={config.id} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                              <div className="flex items-center gap-3">
+                                                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${config.enabled ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`}>
+                                                      <Network size={20} />
+                                                  </div>
+                                                  <div>
+                                                      <div className="font-bold text-sm text-gray-900 dark:text-gray-100">{config.name}</div>
+                                                      <div className="text-xs text-gray-500 font-mono">{config.endpoint}</div>
+                                                  </div>
+                                              </div>
+                                              <div className="flex items-center gap-3">
+                                                  <label className="relative inline-flex items-center cursor-pointer">
+                                                      <input 
+                                                          type="checkbox" 
+                                                          checked={config.enabled}
+                                                          onChange={() => handleToggleMcp(config.id)}
+                                                          className="sr-only peer" 
+                                                      />
+                                                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"></div>
+                                                  </label>
+                                                  <button
+                                                      onClick={() => handleDeleteMcp(config.id)}
+                                                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                  >
+                                                      <Trash2 size={16} />
+                                                  </button>
+                                              </div>
+                                          </div>
+                                      ))}
+                                  </div>
+                              )}
                           </div>
                       </section>
                   )}

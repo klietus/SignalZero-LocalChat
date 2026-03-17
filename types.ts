@@ -89,6 +89,14 @@ export interface VoiceSettings {
   wakeWord?: string;
 }
 
+export interface McpConfiguration {
+  id: string;
+  name: string;
+  endpoint: string;
+  token?: string;
+  enabled: boolean;
+}
+
 export interface GraphHygieneSettings {
   positional: {
     autoCompress: boolean;
@@ -114,6 +122,7 @@ export interface SystemSettings {
   voice?: VoiceSettings;
   hygiene?: GraphHygieneSettings;
   geminiKey?: string;
+  mcpConfigs?: McpConfiguration[];
 }
 
 export interface SystemSettingsUpdate {
@@ -124,6 +133,7 @@ export interface SystemSettingsUpdate {
   voice?: VoiceSettings;
   hygiene?: Partial<GraphHygieneSettings>;
   geminiKey?: string;
+  mcpConfigs?: McpConfiguration[];
 }
 
 export type ContextType = 'conversation' | 'agent';
