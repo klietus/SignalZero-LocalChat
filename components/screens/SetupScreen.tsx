@@ -24,6 +24,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
     const [inferenceApiKey, setInferenceApiKey] = useState('');
     const [inferenceEndpoint, setInferenceEndpoint] = useState('http://localhost:1234/v1');
     const [inferenceModel, setInferenceModel] = useState('openai/gpt-oss-120b');
+    const [inferenceFastModel, setInferenceFastModel] = useState('qwen/qwen3.5-0.8b');
     const [loadSample, setLoadSample] = useState(false);
 
     const [loading, setLoading] = useState(false);
@@ -34,15 +35,19 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
         if (newProvider === 'local') {
              setInferenceEndpoint('http://localhost:1234/v1');
              setInferenceModel('openai/gpt-oss-120b');
+             setInferenceFastModel('qwen/qwen3.5-0.8b');
         } else if (newProvider === 'openai') {
              setInferenceEndpoint('https://api.openai.com/v1');
              setInferenceModel('gpt-4-turbo-preview');
+             setInferenceFastModel('gpt-4o-mini');
         } else if (newProvider === 'kimi2') {
              setInferenceEndpoint('https://api.moonshot.ai/v1');
              setInferenceModel('kimi-k2-thinking');
+             setInferenceFastModel('kimi-k2-thinking');
         } else {
              setInferenceEndpoint('https://generativelanguage.googleapis.com');
              setInferenceModel('gemini-2.5-pro');
+             setInferenceFastModel('gemini-1.5-flash');
         }
     };
 
@@ -70,7 +75,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
             model: inferenceModel,
             agentModel: inferenceModel, // Default agent model to same
             visionModel: inferenceProvider === 'openai' ? 'gpt-4o-mini' : (inferenceProvider === 'gemini' ? 'gemini-2.5-flash-lite' : (inferenceProvider === 'kimi2' ? 'kimi-k2-thinking' : 'zai-org/glm-4.6v-flash')),
-            fastModel: inferenceProvider === 'openai' ? 'gpt-4o-mini' : (inferenceProvider === 'gemini' ? 'gemini-1.5-flash' : (inferenceProvider === 'kimi2' ? 'kimi-k2-thinking' : 'qwen/qwen3.5-9b'))
+            fastModel: inferenceFastModel
         };
 
         try {
@@ -312,27 +317,43 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onSetupComplete }) => 
                                     </div>
                                 )}
                                 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-3">
+                                    <label className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono block mb-1">Inference Endpoint</label>
+                                    <input 
+                                        type="text" 
+                                        value={inferenceEndpoint}
+                                        onChange={(e) => setInferenceEndpoint(e.target.value)}
+                                        placeholder="e.g. http://localhost:1234/v1"
+                                        className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 mt-3">
                                     <div>
-                                        <label className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono block mb-1">Endpoint</label>
-                                        <input 
-                                            type="text" 
-                                            value={inferenceEndpoint}
-                                            onChange={(e) => setInferenceEndpoint(e.target.value)}
-                                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none opacity-70"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono block mb-1">Model Name</label>
+                                        <label className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono block mb-1">Chat Model Name</label>
                                         <input 
                                             type="text" 
                                             value={inferenceModel}
                                             onChange={(e) => setInferenceModel(e.target.value)}
-                                            placeholder={inferenceProvider === 'openai' ? 'gpt-4-turbo-preview' : (inferenceProvider === 'gemini' ? 'gemini-2.5-pro' : (inferenceProvider === 'kimi2' ? 'kimi-k2-thinking' : 'openai/gpt-oss-120b'))}
+                                            placeholder="e.g. gpt-4-turbo-preview"
+                                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-600 dark:text-gray-400 font-mono block mb-1">Fast Model Name</label>
+                                        <input 
+                                            type="text" 
+                                            value={inferenceFastModel}
+                                            onChange={(e) => setInferenceFastModel(e.target.value)}
+                                            placeholder="e.g. gpt-4o-mini"
                                             className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                                         />
                                     </div>
                                 </div>
+                                <p className="text-[10px] text-gray-500 mt-1">
+                                    <span className="font-bold text-amber-600 dark:text-amber-500 uppercase mr-1">Note:</span> 
+                                    Smaller models (e.g. &lt;10B) will produce faster traces but may be less accurate. Fast models can be very small (e.g. 0.8B) for optimal performance.
+                                </p>
                             </div>
                         </section>
 

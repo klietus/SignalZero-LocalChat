@@ -280,11 +280,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               setInferenceFastModel('kimi-k2-thinking');
               setInferenceEndpoint('');
           } else {
-              setInferenceModel('qwen/qwen3.5-9b');
-              setInferenceAgentModel('qwen/qwen3.5-9b');
-              setInferenceVisionModel('qwen/qwen3.5-9b');
-              setInferenceFastModel('qwen/qwen3.5-9b');
-              setInferenceEndpoint('');
+              setInferenceModel('openai/gpt-oss-120b');
+              setInferenceAgentModel('openai/gpt-oss-120b');
+              setInferenceVisionModel('zai-org/glm-4.6v-flash');
+              setInferenceFastModel('qwen/qwen3.5-0.8b');
+              setInferenceEndpoint('http://localhost:1234/v1');
           }
       }
   };
@@ -788,6 +788,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                                           />
                                       </div>
                                   </div>
+                                  
+                                  <p className="text-[10px] text-gray-500 mt-2">
+                                      <span className="font-bold text-amber-600 dark:text-amber-500 uppercase mr-1">Note:</span> 
+                                      Smaller primary models (e.g. &lt;10B) will produce faster traces but may be less accurate for complex symbolic reasoning. 
+                                      The Fast Model is used for system overhead and can be very small (e.g. 0.8B) without impacting quality.
+                                  </p>
                               </div>
                           </div>
                       </section>
