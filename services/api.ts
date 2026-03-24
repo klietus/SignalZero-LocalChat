@@ -162,21 +162,6 @@ export const toggleMic = async (enabled: boolean) => {
     return await resp.json();
 };
 
-export const getStoryStatus = async () => {
-    const resp = await apiFetch('/voice/story/status', { skipLog: true });
-    if (!resp.ok) throw new Error('Failed to get story status');
-    return await resp.json();
-};
-
-export const toggleStoryMode = async (enabled: boolean) => {
-    const resp = await apiFetch('/voice/story/toggle', {
-        method: 'POST',
-        body: JSON.stringify({ enabled })
-    });
-    if (!resp.ok) throw new Error('Failed to toggle story mode');
-    return await resp.json();
-};
-
 export const changePassword = async (oldPassword: string, newPassword: string) => {
     const resp = await apiFetch('/auth/change-password', {
         method: 'POST',

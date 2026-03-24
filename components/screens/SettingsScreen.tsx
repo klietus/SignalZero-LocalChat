@@ -63,6 +63,30 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   // Voice Server State
   const [pulseServer, setPulseServer] = useState('');
   const [wakeWord, setWakeWord] = useState('');
+  const [selectedVoice, setSelectedVoice] = useState('af_sarah');
+
+  const VOICES = [
+    { id: 'af_sarah', name: 'American Female Sarah' },
+    { id: 'af_heart', name: 'American Female Heart' },
+    { id: 'af_alloy', name: 'American Female Alloy' },
+    { id: 'af_aoede', name: 'American Female Aoede' },
+    { id: 'af_bella', name: 'American Female Bella' },
+    { id: 'af_jessica', name: 'American Female Jessica' },
+    { id: 'af_kore', name: 'American Female Kore' },
+    { id: 'af_nicole', name: 'American Female Nicole' },
+    { id: 'af_nova', name: 'American Female Nova' },
+    { id: 'af_river', name: 'American Female River' },
+    { id: 'af_sky', name: 'American Female Sky' },
+    { id: 'am_adam', name: 'American Male Adam' },
+    { id: 'am_echo', name: 'American Male Echo' },
+    { id: 'am_eric', name: 'American Male Eric' },
+    { id: 'am_fenrir', name: 'American Male Fenrir' },
+    { id: 'am_liam', name: 'American Male Liam' },
+    { id: 'am_michael', name: 'American Male Michael' },
+    { id: 'am_onyx', name: 'American Male Onyx' },
+    { id: 'am_puck', name: 'American Male Puck' },
+    { id: 'am_santa', name: 'American Male Santa' }
+  ];
 
   // Password Change State
   const [oldPassword, setOldPassword] = useState('');
@@ -156,6 +180,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
     setPulseServer(voice.pulseServer || '');
     setWakeWord(voice.wakeWord || 'axiom');
+    setSelectedVoice(voice.voice || 'af_sarah');
 
     setMcpConfigs(settings.mcpConfigs || []);
 
@@ -380,7 +405,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             },
             voice: {
                 pulseServer: pulseServer || undefined,
-                wakeWord: wakeWord || undefined
+                wakeWord: wakeWord || undefined,
+                voice: selectedVoice || 'af_sarah'
             },
             hygiene: hygieneSettings,
             inference: inferencePayload,
@@ -1100,6 +1126,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                                       className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
                                   />
                                   <p className="text-xs text-gray-500">Word or phrase to trigger the AI.</p>
+                              </div>
+
+                              <div className="space-y-2">
+                                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono flex items-center gap-2">
+                                      <RefreshCw size={14} /> Text-to-Speech Voice
+                                  </label>
+                                  <select
+                                      value={selectedVoice}
+                                      onChange={(e) => setSelectedVoice(e.target.value)}
+                                      className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-gray-900 dark:text-gray-100"
+                                  >
+                                      {VOICES.map(voice => (
+                                          <option key={voice.id} value={voice.id}>{voice.name}</option>
+                                      ))}
+                                  </select>
+                                  <p className="text-xs text-gray-500">The default voice used for all spoken responses.</p>
                               </div>
                           </div>
                       </section>

@@ -87,6 +87,7 @@ export interface SerpApiSettings {
 export interface VoiceSettings {
   pulseServer?: string;
   wakeWord?: string;
+  voice?: string;
 }
 
 export interface McpConfiguration {

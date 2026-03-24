@@ -203,9 +203,46 @@ function App() {
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const [isServerConnected, setIsServerConnected] = useState(isApiUrlConfigured());
 
+  // Resizable Sidebar State
+  const [sidebarWidth, setSidebarWidth] = useState(256); // Default 64 * 4 = 256px
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback((e: MouseEvent) => {
+    if (isResizing) {
+      const newWidth = e.clientX;
+      if (newWidth > 150 && newWidth < 600) {
+        setSidebarWidth(newWidth);
+      }
+    }
+  }, [isResizing]);
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resize);
+    window.addEventListener('mouseup', stopResizing);
+    return () => {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, [resize, stopResizing]);
+
   // Auth State
   const [appState, setAppState] = useState<'checking' | 'setup' | 'login' | 'app'>('checking');
   const lastActivityRef = useRef(Date.now());
+
+  useEffect(() => {
+    if (currentView === 'chat' && !activeContextId && contexts.length > 0 && appState === 'app') {
+      setActiveContextId(contexts[0].id);
+    }
+  }, [currentView, activeContextId, contexts, appState]);
 
   const handleLogout = useCallback(() => {
       localStorage.removeItem('signalzero_auth_token');
@@ -637,13 +674,20 @@ function App() {
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100">
         {/* Left Panel */}
         {currentView === 'chat' && (
-            <ContextListPanel 
-                contexts={contexts}
-                activeContextId={activeContextId}
-                onSelectContext={setActiveContextId}
-                onCreateContext={handleCreateContext}
-                onArchiveContext={handleArchiveContext}
-            />
+            <>
+                <ContextListPanel 
+                    contexts={contexts}
+                    activeContextId={activeContextId}
+                    onSelectContext={setActiveContextId}
+                    onCreateContext={handleCreateContext}
+                    onArchiveContext={handleArchiveContext}
+                    width={sidebarWidth}
+                />
+                <div 
+                    className={`w-1 hover:w-1.5 active:w-1.5 h-full bg-gray-200 dark:bg-gray-800 cursor-col-resize hover:bg-indigo-500/50 transition-all z-10 flex-shrink-0 ${isResizing ? 'bg-indigo-500 w-1.5' : ''}`}
+                    onMouseDown={startResizing}
+                />
+            </>
         )}
 
         <div className="flex-1 flex flex-col min-w-0">
